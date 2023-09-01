@@ -1,0 +1,15 @@
+# macOS system files
+.DS_Store
+
+# Thumbnails
+._*
+
+# Files that store folder-specific application settings
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Folder config file
+.DS_Store?
