@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
@@ -28,6 +29,18 @@ func (dp *MemoryProvider) CreateUser(ctx context.Context, params data.CreateUseP
 	}
 
 	dp.users[user.ID] = user
+
+	return user, nil
+}
+
+func (dp *MemoryProvider) GetUserByID(ctx context.Context, userID string) (*data.User, error) {
+	dp.mu.Lock()
+	defer dp.mu.Unlock()
+
+	user, exist := dp.users[userID]
+	if !exist {
+		return nil, fmt.Errorf("user doesn't exist")
+	}
 
 	return user, nil
 }

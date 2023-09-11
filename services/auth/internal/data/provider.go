@@ -10,4 +10,5 @@ type CreateUseParams struct {
 
 type AuthProvider interface {
 	CreateUser(ctx context.Context, params CreateUseParams) (*User, error)
+	GetUserByID(ctx context.Context, UserID string) (*User, error)
 }

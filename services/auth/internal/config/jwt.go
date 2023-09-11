@@ -5,12 +5,14 @@ import (
 	"errors"
 	"os"
 	"strconv"
+
+	"github.com/golang-jwt/jwt"
 )
 
 // JWTConfig holds the JWT configurations.
 type JWTConfig struct {
 	secretKey       string
-	signingMethod   string
+	signingMethod   jwt.SigningMethod
 	accessTokenExp  int // Expiration time for access token in minutes
 	refreshTokenExp int // Expiration time for refresh token in minutes
 	issuer          string
@@ -29,7 +31,7 @@ func NewJWTConfigBuilder() *JWTConfigBuilder {
 // FromEnv populates the JWTConfig object with values from environment variables.
 func (b *JWTConfigBuilder) FromEnv() *JWTConfigBuilder {
 	b.config.secretKey = os.Getenv("JWT_SECRET_KEY")
-	b.config.signingMethod = os.Getenv("JWT_SIGNING_METHOD")
+	b.config.signingMethod = jwt.GetSigningMethod(os.Getenv("JWT_SIGNING_METHOD"))
 	b.config.accessTokenExp, _ = strconv.Atoi(os.Getenv("JWT_ACCESS_TOKEN_EXP"))
 	b.config.refreshTokenExp, _ = strconv.Atoi(os.Getenv("JWT_REFRESH_TOKEN_EXP"))
 	b.config.issuer = os.Getenv("JWT_ISSUER")
@@ -38,8 +40,8 @@ func (b *JWTConfigBuilder) FromEnv() *JWTConfigBuilder {
 
 // Validate checks if the JWTConfig object has valid fields.
 func (b *JWTConfigBuilder) Validate() error {
-	if b.config.signingMethod == "" {
-		return errors.New("SigningMethod must not be empty")
+	if b.config.signingMethod == nil {
+		return errors.New("SigningMethod must is not valid")
 	}
 
 	if b.config.secretKey == "" {
@@ -47,11 +49,11 @@ func (b *JWTConfigBuilder) Validate() error {
 	}
 
 	if b.config.accessTokenExp == 0 {
-		return errors.New("AccessTokenExp must not be zero")
+		return errors.New("AccessTokenExp must greater than zero")
 	}
 
 	if b.config.refreshTokenExp == 0 {
-		return errors.New("RefreshTokenExp must not be zero")
+		return errors.New("RefreshTokenExp must greater than zero")
 	}
 
 	if b.config.issuer == "" {
@@ -75,7 +77,7 @@ func (c *JWTConfig) GetSecretKey() string {
 }
 
 // GetSigningMethod returns the signing method from the JWTConfig.
-func (c *JWTConfig) GetSigningMethod() string {
+func (c *JWTConfig) GetSigningMethod() jwt.SigningMethod {
 	return c.signingMethod
 }
 
