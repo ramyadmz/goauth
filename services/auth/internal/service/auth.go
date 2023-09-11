@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"regexp"
-	"time"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/ramyadmz/goauth/internal/config"
 	"github.com/ramyadmz/goauth/internal/data"
 	"github.com/ramyadmz/goauth/pkg/pb"
+	"github.com/ramyadmz/goauth/internal/token/pb"
 
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
@@ -24,7 +24,7 @@ const (
 type AuthService struct {
 	pb.UnimplementedAuthServiceServer
 	DAL    data.AuthProvider
-	Config *config.JWTConfig
+	??? token.jwt.JWTSerive
 }
 
 func (as *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
@@ -44,7 +44,7 @@ func (as *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*
 		return nil, status.Errorf(codes.Internal, "failed to insert user data to database: %v", err)
 	}
 
-	token, err := as.generateToken(req.Username)
+	token, err := as.(req.Username)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to generate token: %v", err)
 	}
@@ -54,17 +54,6 @@ func (as *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*
 		Message: "",
 		Token:   token,
 	}, nil
-}
-
-func (as *AuthService) generateToken(subject string) (string, error) {
-	claims := jwt.StandardClaims{
-		Subject:   subject,
-		Issuer:    "GoAuth",
-		IssuedAt:  time.Now().Unix(),
-		ExpiresAt: time.Now().Add(72 * time.Hour).Unix(),
-	}
-	token := jwt.NewWithClaims(as.Config.GetSigningMethod(), claims)
-	return token.SignedString([]byte("my-secret-key"))
 }
 
 func (as *AuthService) validateRegisterRequest(req *pb.RegisterRequest) error {
