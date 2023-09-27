@@ -10,10 +10,10 @@ type User struct {
 	tableName struct{}  `pg:"Users"`
 	ID        string    `pg:"id,pk"`
 	UserName  string    `pg:"username,unique,notnull"`
-	Password  string    `pg:"password,notnull"` // Encrypted
+	Password  []byte    `pg:"password,notnull"` // Encrypted
 	Email     string    `pg:"email,unique,notnull"`
-	CreatedAt time.Time `pg:"default:now()"`
-	UpdatedAt time.Time
+	CreatedAt time.Time `pg:"created_at,default:now()"`
+	UpdatedAt time.Time `pg:"updated_at"`
 }
 
 func (u *User) ToData() *data.User {

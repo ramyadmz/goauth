@@ -16,7 +16,10 @@ func main() {
 		return
 	}
 	authService := &service.AuthService{}
-	srv := grpc.NewServer()
+	serviceOpts := []grpc.ServerOption{
+		grpc.ChainUnaryInterceptor(service.ValidationInterceptor),
+	}
+	srv := grpc.NewServer(serviceOpts...)
 	pb.RegisterAuthServiceServer(srv, authService)
 	srv.Serve(listener)
 	if err != nil {

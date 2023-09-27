@@ -3,6 +3,6 @@ package data
 type User struct {
 	ID       string
 	Username string
-	Password string
+	Password []byte
 	Email    string
 }

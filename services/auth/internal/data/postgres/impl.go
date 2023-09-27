@@ -77,3 +77,26 @@ func (pp *PostgresProvider) GetUserByID(ctx context.Context, userID string) (*da
 
 	return user.ToData(), nil
 }
+
+func (pp *PostgresProvider) GetUserByUsername(ctx context.Context, username string) (*data.User, error) {
+	user := &data.User{Username: username}
+	tx, err := pp.db.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Model(user).Select(ctx)
+	if err != nil {
+		tx.Rollback(ctx)
+		if err == pg.ErrNoRows {
+			return nil, fmt.Errorf("user not found: %w", err)
+		}
+		return nil, err
+	}
+
+	// Commit the transaction
+	if err = tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return user, nil
+}
