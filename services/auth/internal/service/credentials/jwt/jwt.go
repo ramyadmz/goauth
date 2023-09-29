@@ -6,11 +6,11 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/ramyadmz/goauth/internal/config"
-	tokenProvider "github.com/ramyadmz/goauth/internal/token"
+	cred "github.com/ramyadmz/goauth/internal/service/credentials"
 )
 
 // Compile time check for TokenHandler interface satisfaction.
-var _ tokenProvider.TokenHandler = new(JWTService)
+var _ cred.TokenHandler = new(JWTService)
 
 // JWTService manages JSON Web Token operations
 type JWTService struct {
@@ -26,7 +26,7 @@ func NewJWTService(cnfg *config.JWTConfig) *JWTService {
 
 // GenerateToken generates a new JSON Web Token
 // It takes a 'subject' as an input and returns a signed token or an error.
-func (js *JWTService) GenerateToken(data interface{}) (string, error) {
+func (js *JWTService) Generate(data interface{}) (string, error) {
 	strData, ok := data.(string)
 	if !ok {
 		return "", fmt.Errorf("invalid data type for GenerateToken, expected string")
@@ -46,29 +46,42 @@ func (js *JWTService) GenerateToken(data interface{}) (string, error) {
 	signedToken, err := token.SignedString([]byte(js.config.GetSecretKey()))
 	if err != nil {
 		// Wrap the upper-level error tokenProvider.ErrSigningToken with the specific error
-		return "", fmt.Errorf("%w: %w", tokenProvider.ErrSigningToken, err)
+		return "", fmt.Errorf("%w: %w", cred.ErrGeneratingToken, err)
 	}
 
 	return signedToken, nil
 }
 
 // ValidateToken validates a provided token string.
-func (js *JWTService) ValidateToken(tokenString string) (interface{}, error) {
+func (js *JWTService) Validate(tokenString string) (interface{}, error) {
 	claims := &jwt.StandardClaims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		if token.Method != js.config.GetSigningMethod() {
-			return nil, fmt.Errorf("%w: %v", tokenProvider.ErrInvalidSigningMethod, token.Method.Alg())
+			return nil, fmt.Errorf("%w: %v", cred.ErrInvalidSigningMethod, token.Method.Alg())
 		}
 		return []byte(js.config.GetSecretKey()), nil
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", tokenProvider.ErrValidatingToken, err)
+		return nil, fmt.Errorf("%w: %w", cred.ErrValidatingToken, err)
 	}
 
 	if err = token.Claims.Valid(); err != nil {
-		return nil, fmt.Errorf("%w: %w", tokenProvider.ErrInvalidToken, err)
+		return nil, fmt.Errorf("%w: %w", cred.ErrInvalidToken, err)
 	}
 	return claims.Subject, nil
+}
+
+// ValidateToken validates a provided token string.
+func (js *JWTService) Invalidate(tokenString string) (interface{}, error) {
+	// todo: black list the token
+	return "", nil
+}
+
+// ValidateToken validates a provided token string.
+func (js *JWTService) Refresh(tokenString string) (string, error) {
+
+	// todo: refresh the token
+	return "", nil
 }
