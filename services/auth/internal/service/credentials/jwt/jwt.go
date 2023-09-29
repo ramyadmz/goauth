@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -26,7 +27,7 @@ func NewJWTService(cnfg *config.JWTConfig) *JWTService {
 
 // GenerateToken generates a new JSON Web Token
 // It takes a 'subject' as an input and returns a signed token or an error.
-func (js *JWTService) Generate(data interface{}) (string, error) {
+func (js *JWTService) Generate(ctx context.Context, data interface{}) (string, error) {
 	strData, ok := data.(string)
 	if !ok {
 		return "", fmt.Errorf("invalid data type for GenerateToken, expected string")
@@ -53,7 +54,7 @@ func (js *JWTService) Generate(data interface{}) (string, error) {
 }
 
 // ValidateToken validates a provided token string.
-func (js *JWTService) Validate(tokenString string) (interface{}, error) {
+func (js *JWTService) Validate(ctx context.Context, tokenString string) (interface{}, error) {
 	claims := &jwt.StandardClaims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
@@ -74,13 +75,13 @@ func (js *JWTService) Validate(tokenString string) (interface{}, error) {
 }
 
 // ValidateToken validates a provided token string.
-func (js *JWTService) Invalidate(tokenString string) (interface{}, error) {
+func (js *JWTService) Invalidate(ctx context.Context, tokenString string) (interface{}, error) {
 	// todo: black list the token
 	return "", nil
 }
 
 // ValidateToken validates a provided token string.
-func (js *JWTService) Refresh(tokenString string) (string, error) {
+func (js *JWTService) Refresh(ctx context.Context, tokenString string) (string, error) {
 
 	// todo: refresh the token
 	return "", nil

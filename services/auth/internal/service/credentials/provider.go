@@ -1,6 +1,9 @@
 package credentials
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 var (
 	ErrGeneratingToken      = errors.New("Error failed tp generate the token")
@@ -10,8 +13,8 @@ var (
 )
 
 type TokenHandler interface {
-	Generate(data interface{}) (string, error)
-	Validate(key string) (interface{}, error)
-	Invalidate(key string) (interface{}, error)
-	Refresh(key string) (string, error)
+	Generate(ctx context.Context, data interface{}) (string, error)
+	Validate(ctx context.Context, key string) (interface{}, error)
+	Invalidate(ctx context.Context, key string) (interface{}, error)
+	Refresh(ctx context.Context, key string) (string, error)
 }

@@ -92,3 +92,23 @@ func (p *PostgresProvider) GetSessionByID(ctx context.Context, sessionID string)
 
 	return session.ToData(), nil
 }
+
+func (p *PostgresProvider) DeleteSessionByID(ctx context.Context, sessionID string) error {
+	session := &Session{ID: sessionID}
+	_, err := p.db.Model(session).Delete(ctx)
+	return err
+}
+
+func (p *PostgresProvider) UpdateSession(ctx context.Context, params data.UpdateSessionParams) (*data.Session, error) {
+	session := Session{
+		ID:        params.SessionID,
+		ExpiresAt: params.ExpiresAt,
+	}
+
+	_, err := p.db.Model(session).UpdateNotZero(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return session.ToData(), nil
+}

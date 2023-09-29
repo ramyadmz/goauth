@@ -41,7 +41,7 @@ func (u *UserAuthService) Register(ctx context.Context, req *pb.RegisterRequest)
 	}
 
 	// Generate a new session id
-	sessionId, err := u.sessionHandler.Generate(userData.ID)
+	sessionId, err := u.sessionHandler.Generate(ctx, userData.ID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error generating authentication session id: %v", err)
 	}
@@ -72,7 +72,7 @@ func (u *UserAuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.
 	}
 
 	// Generate a new session id
-	sessionId, err := u.sessionHandler.Generate(userData.ID)
+	sessionId, err := u.sessionHandler.Generate(ctx, userData.ID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error generating authentication session: %v", err)
 	}
@@ -85,7 +85,7 @@ func (u *UserAuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.
 
 func (u *UserAuthService) Consent(ctx context.Context, req *pb.ConsentRequest) (*pb.ConsentResponse, error) {
 	// Validate the token
-	userID, err := u.sessionHandler.Validate(req.SessionId)
+	userID, err := u.sessionHandler.Validate(ctx, req.SessionId)
 	if err != nil {
 		if err == credentials.ErrInvalidToken {
 			return nil, status.Errorf(codes.Unauthenticated, "Invalid or expired session.")
@@ -106,6 +106,8 @@ func (u *UserAuthService) Consent(ctx context.Context, req *pb.ConsentRequest) (
 	if req.Username != userData.Username {
 		return nil, status.Errorf(codes.Unauthenticated, "Invalid session.")
 	}
+
+	// todo check app id existance and create atho code and grant record
 
 	return &pb.ConsentResponse{}, nil
 }
