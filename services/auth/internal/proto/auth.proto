@@ -11,9 +11,7 @@ message RegisterRequest{
 }
 
 message RegisterResponse{
-    bool success = 1;
-    string message = 2;
-    string token = 3;
+    string session_id = 1;
 }
 
 message LoginRequest{
@@ -22,26 +20,22 @@ message LoginRequest{
 }
 
 message LoginResponse{
-    bool success = 1;
-    string message = 2;
-    string token = 3;
+    string session_id = 1;
 }
 
-message ValidateRequest{
-    string token = 1;
+message ConsentRequest {
+    string client_id = 1;
+    string redirect_uri = 2;
+    string username = 3;
+    string session_id = 4;
+}  
+
+message ConsentResponse {
 }
 
-message ValidateResponse{
-    bool is_valid = 1;
-    string subject = 2;
-}
-
-
-service AuthService {
+service UserAuthService {
     rpc Register (RegisterRequest) returns (RegisterResponse);
     rpc Login (LoginRequest) returns (LoginResponse);
-    rpc Validate (ValidateRequest) returns (ValidateResponse);
-
-
+    rpc Consent (ConsentRequest) returns (ConsentResponse);
 }
 
