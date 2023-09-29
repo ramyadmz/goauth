@@ -1,15 +1,30 @@
 package data
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
-type CreateUseParams struct {
-	Username string
-	Password []byte
-	Email    string
+var (
+	ErrUserNotFound      = errors.New("user not found")
+	ErrSessionNotFound   = errors.New("session not found")
+	ErrUserCreation      = errors.New("failed to create user")
+	ErrSessionCreation   = errors.New("failed to create session")
+	ErrInvalidCredential = errors.New("invalid credentials")
+	// Add more as needed
+)
+
+type CreateUserParams struct {
+	Username       string
+	HashedPassword []byte
+	Email          string
 }
 
 type AuthProvider interface {
-	CreateUser(ctx context.Context, params CreateUseParams) (*User, error)
-	GetUserByID(ctx context.Context, userID string) (*User, error)
+	CreateUser(ctx context.Context, params CreateUserParams) (*User, error)
+	GetUserByID(ctx context.Context, userID int) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
+
+	CreateSession(ctx context.Context, userID int) (*Session, error)
+	GetSessionByID(ctx context.Context, sessionID string) (*Session, error)
 }
