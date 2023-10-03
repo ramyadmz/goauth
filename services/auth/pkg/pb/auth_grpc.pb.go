@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 type UserAuthServiceClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	Consent(ctx context.Context, in *ConsentRequest, opts ...grpc.CallOption) (*ConsentResponse, error)
 }
 
@@ -53,6 +54,15 @@ func (c *userAuthServiceClient) Login(ctx context.Context, in *LoginRequest, opt
 	return out, nil
 }
 
+func (c *userAuthServiceClient) Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
+	out := new(LogoutResponse)
+	err := c.cc.Invoke(ctx, "/proto.UserAuthService/Logout", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userAuthServiceClient) Consent(ctx context.Context, in *ConsentRequest, opts ...grpc.CallOption) (*ConsentResponse, error) {
 	out := new(ConsentResponse)
 	err := c.cc.Invoke(ctx, "/proto.UserAuthService/Consent", in, out, opts...)
@@ -68,6 +78,7 @@ func (c *userAuthServiceClient) Consent(ctx context.Context, in *ConsentRequest,
 type UserAuthServiceServer interface {
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
+	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
 	Consent(context.Context, *ConsentRequest) (*ConsentResponse, error)
 	mustEmbedUnimplementedUserAuthServiceServer()
 }
@@ -81,6 +92,9 @@ func (UnimplementedUserAuthServiceServer) Register(context.Context, *RegisterReq
 }
 func (UnimplementedUserAuthServiceServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedUserAuthServiceServer) Logout(context.Context, *LogoutRequest) (*LogoutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
 }
 func (UnimplementedUserAuthServiceServer) Consent(context.Context, *ConsentRequest) (*ConsentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Consent not implemented")
@@ -134,6 +148,24 @@ func _UserAuthService_Login_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserAuthService_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogoutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserAuthServiceServer).Logout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.UserAuthService/Logout",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserAuthServiceServer).Logout(ctx, req.(*LogoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserAuthService_Consent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ConsentRequest)
 	if err := dec(in); err != nil {
@@ -166,6 +198,10 @@ var UserAuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _UserAuthService_Login_Handler,
+		},
+		{
+			MethodName: "Logout",
+			Handler:    _UserAuthService_Logout_Handler,
 		},
 		{
 			MethodName: "Consent",

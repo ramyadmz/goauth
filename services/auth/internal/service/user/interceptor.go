@@ -21,7 +21,11 @@ func ValidationInterceptor(ctx context.Context, req any, info *grpc.UnaryServerI
 			return nil, status.Errorf(codes.InvalidArgument, "invalid login request: %v", err)
 		}
 	case "/pb.AuthService/Consent":
-		if err := validateLoginRequest(req.(*pb.LoginRequest)); err != nil {
+		if err := validateConsentRequest(req.(*pb.ConsentRequest)); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid consent request: %v", err)
+		}
+	case "/pb.AuthService/Logout":
+		if err := validateLogoutRequest(req.(*pb.LogoutRequest)); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "invalid login request: %v", err)
 		}
 	}
@@ -63,8 +67,16 @@ func validateConsentRequest(req *pb.ConsentRequest) error {
 	if err := validate.Var(req.ClientId, "required,min=4"); err != nil {
 		return err
 	}
+	if err := validate.Var(req.SessionId, "required,min=4"); err != nil {
+		return err
+	}
 
-	if err := validate.Var(req.Username, "required,min=4,max=20"); err != nil {
+	return nil
+}
+
+func validateLogoutRequest(req *pb.LogoutRequest) error {
+	validate := validator.New()
+	if err := validate.Var(req.SessionId, "required,min=4"); err != nil {
 		return err
 	}
 

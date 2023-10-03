@@ -11,7 +11,6 @@ message RegisterRequest{
 }
 
 message RegisterResponse{
-    string session_id = 1;
 }
 
 message LoginRequest{
@@ -26,16 +25,23 @@ message LoginResponse{
 message ConsentRequest {
     string client_id = 1;
     string redirect_uri = 2;
-    string username = 3;
     string session_id = 4;
 }  
 
 message ConsentResponse {
 }
 
+message LogoutRequest{
+    string session_id = 2;
+}
+
+message LogoutResponse{
+}
+
 service UserAuthService {
     rpc Register (RegisterRequest) returns (RegisterResponse);
     rpc Login (LoginRequest) returns (LoginResponse);
+    rpc Logout (LogoutRequest) returns (LogoutResponse);
     rpc Consent (ConsentRequest) returns (ConsentResponse);
 }
 
