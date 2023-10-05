@@ -33,7 +33,7 @@ func (u *UserAuthService) RegisterUser(ctx context.Context, req *pb.RegisterUser
 	// Hash the password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), DefaultCost)
 	if err != nil {
-		logger.WithField("error", err).Error("Error hashing password")
+		logger.Error("Error hashing password: %w", err)
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
@@ -44,7 +44,7 @@ func (u *UserAuthService) RegisterUser(ctx context.Context, req *pb.RegisterUser
 		Email:          req.Email,
 	})
 	if err != nil {
-		logger.WithField("error", err).Error("Error creating user in database")
+		logger.Error("Error creating user in database: %w", err)
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
@@ -61,10 +61,10 @@ func (u *UserAuthService) LoginUser(ctx context.Context, req *pb.UserLoginReques
 	userData, err := u.DAL.GetUserByUsername(ctx, req.Username)
 	if err != nil {
 		if err == data.ErrUserNotFound {
-			logger.WithField("error", err).Error("invalid username or password")
+			logger.Error("invalid username or password: %w", err)
 			return nil, status.Errorf(codes.Unauthenticated, "invalid username or password")
 		}
-		logger.WithField("error", err).Error("error retrieving user by username")
+		logger.Error("error retrieving user by username: %w", err)
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
@@ -72,10 +72,10 @@ func (u *UserAuthService) LoginUser(ctx context.Context, req *pb.UserLoginReques
 	err = bcrypt.CompareHashAndPassword(userData.HashedPassword, []byte(req.Password))
 	if err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			logger.WithField("error", err).Error("invalid username or password")
+			logger.Error("invalid username or password: %w", err)
 			return nil, status.Errorf(codes.Unauthenticated, "invalid username or password")
 		}
-		logger.WithField("error", err).Error("error comparing password")
+		logger.Error("error comparing password: %w", err)
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
@@ -85,7 +85,7 @@ func (u *UserAuthService) LoginUser(ctx context.Context, req *pb.UserLoginReques
 		ExpiresAt: time.Now().Add(SessionExpTime),
 	})
 	if err != nil {
-		logger.WithField("error", err).Error("error generating authentication session")
+		logger.Error("error generating authentication session: %w", err)
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
@@ -102,10 +102,10 @@ func (u *UserAuthService) LogoutUser(ctx context.Context, req *pb.UserLogoutRequ
 
 	if err := u.sessionHandler.Invalidate(ctx, req.SessionId); err != nil {
 		if err == credentials.ErrInvalidToken {
-			logger.WithField("error", err).Error("invalid or expired session")
+			logger.Error("invalid or expired session: %w", err)
 			return nil, status.Errorf(codes.Unauthenticated, "invalid or expired session")
 		}
-		logger.WithField("error", err).Error("error validating session")
+		logger.Error("error validating session: %w", err)
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
@@ -122,10 +122,10 @@ func (u *UserAuthService) ConsentUser(ctx context.Context, req *pb.UserConsentRe
 	userID, err := u.sessionHandler.Validate(ctx, req.SessionId)
 	if err != nil {
 		if err == credentials.ErrInvalidToken {
-			logger.WithField("error", err).Error("invalid or expired session")
+			logger.Error("invalid or expired session: %w", err)
 			return nil, status.Errorf(codes.Unauthenticated, "invalid or expired session")
 		}
-		logger.WithField("error", err).Error("error validating session")
+		logger.Error("error validating session: %w", err)
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 

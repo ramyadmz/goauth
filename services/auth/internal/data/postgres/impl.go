@@ -29,7 +29,7 @@ func (p *PostgresProvider) CreateUser(ctx context.Context, params data.CreateUse
 
 	_, err := p.db.Model(user).Insert(ctx)
 	if err != nil {
-		logger.WithField("error", err).Error("Error creating user")
+		logger.Error("Error creating user: %w", err)
 		return nil, data.ErrUserCreation
 	}
 
@@ -45,10 +45,10 @@ func (p *PostgresProvider) GetUserByID(ctx context.Context, userID int64) (*data
 	err := p.db.Model(user).WherePK().Select(ctx)
 	if err != nil {
 		if err == pg.ErrNoRows {
-			logger.WithField("error", err).Error(data.ErrUserNotFound)
+			logger.Error(data.ErrUserNotFound)
 			return nil, data.ErrUserNotFound
 		}
-		logger.WithField("error", err).Error("error fetching user by userid")
+		logger.Error("error fetching user by userid: %w", err)
 		return nil, err
 	}
 
@@ -63,10 +63,10 @@ func (p *PostgresProvider) GetUserByUsername(ctx context.Context, username strin
 	err := p.db.Model(user).Select(ctx)
 	if err != nil {
 		if err == pg.ErrNoRows {
-			logger.WithField("error", err).Error(data.ErrUserNotFound)
+			logger.Error(data.ErrUserNotFound)
 			return nil, data.ErrUserNotFound
 		}
-		logger.WithField("error", err).Error("error fetching user by username")
+		logger.Error("error fetching user by username: %w", err)
 		return nil, err
 	}
 
@@ -85,7 +85,7 @@ func (p *PostgresProvider) CreateSession(ctx context.Context, params data.Create
 
 	_, err := p.db.Model(session).Insert(ctx)
 	if err != nil {
-		logger.WithField("error", err).Error(data.ErrSessionCreation)
+		logger.Error(data.ErrSessionCreation)
 		return nil, data.ErrSessionCreation
 	}
 
@@ -103,10 +103,10 @@ func (p *PostgresProvider) GetSessionByID(ctx context.Context, sessionID string)
 	err := p.db.Model(session).WherePK().Select(ctx)
 	if err != nil {
 		if err == pg.ErrNoRows {
-			logger.WithField("error", err).Error(data.ErrSessionNotFound)
+			logger.Error(data.ErrSessionNotFound)
 			return nil, data.ErrSessionNotFound
 		}
-		logger.WithField("error", err).Error("error fetching session by session id")
+		logger.Error("error fetching session by session id: %w", err)
 		return nil, err
 	}
 
@@ -120,7 +120,7 @@ func (p *PostgresProvider) DeleteSessionByID(ctx context.Context, sessionID stri
 
 	_, err := p.db.Model(session).Delete(ctx)
 	if err != nil {
-		logger.WithField("error", err).Error("error deleting session by session id")
+		logger.Error("error deleting session by session id: %w", err)
 		return err
 	}
 
@@ -137,7 +137,7 @@ func (p *PostgresProvider) UpdateSession(ctx context.Context, params data.Update
 
 	_, err := p.db.Model(session).UpdateNotZero(ctx)
 	if err != nil {
-		logger.WithField("error", err).Error("error updating session")
+		logger.Error("error updating session: %w", err)
 		return nil, err
 	}
 
@@ -159,7 +159,7 @@ func (p *PostgresProvider) CreateClient(ctx context.Context, params data.CreateC
 
 	_, err := p.db.Model(client).Returning("id").Insert(ctx)
 	if err != nil {
-		logger.WithField("error", err).Error("error creating client")
+		logger.Error("error creating client: %w", err)
 		return nil, err
 	}
 
@@ -176,10 +176,10 @@ func (p *PostgresProvider) GetClientByID(ctx context.Context, clientID int64) (*
 	err := p.db.Model(client).Select(ctx)
 	if err != nil {
 		if err == pg.ErrNoRows {
-			logger.WithField("error", err).Error(data.ErrClientNotFound)
+			logger.Error(data.ErrClientNotFound)
 			return nil, data.ErrClientNotFound
 		}
-		logger.WithField("error", err).Error("error fetching client")
+		logger.Error("error fetching client: %w", err)
 		return nil, err
 	}
 
@@ -199,7 +199,7 @@ func (p *PostgresProvider) CreateAuthorization(ctx context.Context, params data.
 
 	_, err := p.db.Model(authorization).Insert(ctx)
 	if err != nil {
-		logger.WithField("error", err).Error("error creating authorization")
+		logger.Error("error creating authorization: %w", err)
 		return nil, err
 	}
 
@@ -219,7 +219,7 @@ func (p *PostgresProvider) GetAuthorizationCodeByAuthCode(ctx context.Context, a
 			logger.Warn("invalid auth code: %w", err)
 			return nil, data.ErrAuthorizationNotFound
 		}
-		logger.WithField("error", err).Error("error fetching authorization")
+		logger.Error("error fetching authorization: %w", err)
 		return nil, err
 	}
 
@@ -237,10 +237,10 @@ func (p *PostgresProvider) GetAuthorizationCodeByUserIDAndClientID(ctx context.C
 	err := p.db.Model(authorization).Select(ctx)
 	if err != nil {
 		if err == pg.ErrNoRows {
-			logger.WithField("error", err).Error(data.ErrAuthorizationNotFound)
+			logger.Error(data.ErrAuthorizationNotFound)
 			return nil, data.ErrAuthorizationNotFound
 		}
-		logger.WithField("error", err).Error("error fetching authorization")
+		logger.Error("error fetching authorization: %w", err)
 		return nil, err
 	}
 
@@ -256,7 +256,7 @@ func (p *PostgresProvider) RevokeAuthorizationByUserID(ctx context.Context, user
 		Set("is_revoked = ?", true).
 		Update(ctx)
 	if err != nil {
-		logger.WithField("error", err).Error("error updating authorization")
+		logger.Error("error updating authorization: %w", err)
 		return err
 	}
 
