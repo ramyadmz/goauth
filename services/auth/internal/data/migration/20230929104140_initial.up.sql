@@ -12,5 +12,24 @@ CREATE TABLE sessions (
   user_id INT REFERENCES users(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   expires_at TIMESTAMP,
-  last_accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE clients (
+    id SERIAL PRIMARY KEY,
+    hashed_secret VARCHAR(128) NOT NULL,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    website VARCHAR(50) UNIQUE NOT NULL,
+    scope VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+);
+
+CREATE TABLE authorization_codes (
+    auth_code VARCHAR(255) PRIMARY KEY,
+    client_id INT REFERENCES clients(id),
+    user_id INT REFERENCES users(id),
+    scope VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    is_revoked BOOLEAN NOT NULL,
 );
