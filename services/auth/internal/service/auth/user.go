@@ -1,8 +1,9 @@
-package user
+package auth
 
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/ramyadmz/goauth/internal/data"
 	"github.com/ramyadmz/goauth/internal/service/credentials"
@@ -15,16 +16,17 @@ import (
 )
 
 const (
-	DefaultCost = 10 // default cost which is passed into GenerateFromPassword hash function
+	DefaultCost    = 10 // default cost which is passed into GenerateFromPassword hash function
+	SessionExpTime = 24 * time.Hour
 )
 
 type UserAuthService struct {
-	pb.UnimplementedUserAuthServiceServer
+	pb.UnimplementedOAuthServiceServer
 	DAL            data.AuthProvider
 	sessionHandler credentials.TokenHandler
 }
 
-func (u *UserAuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
+func (u *UserAuthService) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) (*pb.RegisterUserResponse, error) {
 	logger := logrus.WithContext(ctx).WithField("username", req.Username).WithField("email", req.Email)
 	logger.Info("register request recieved")
 
@@ -32,7 +34,7 @@ func (u *UserAuthService) Register(ctx context.Context, req *pb.RegisterRequest)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), DefaultCost)
 	if err != nil {
 		logger.WithField("error", err).Error("Error hashing password")
-		return nil, status.Errorf(codes.Internal, "Error hashing password: %v", err)
+		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
 	// Create the user
@@ -43,15 +45,15 @@ func (u *UserAuthService) Register(ctx context.Context, req *pb.RegisterRequest)
 	})
 	if err != nil {
 		logger.WithField("error", err).Error("Error creating user in database")
-		return nil, status.Errorf(codes.Internal, "Error creating user in database: %v", err)
+		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
 	// Successful registration
 	logger.Info("user registered successfully")
-	return &pb.RegisterResponse{}, nil
+	return &pb.RegisterUserResponse{}, nil
 }
 
-func (u *UserAuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
+func (u *UserAuthService) LoginUser(ctx context.Context, req *pb.UserLoginRequest) (*pb.UserLoginResponse, error) {
 	logger := logrus.WithContext(ctx).WithField("username", req.Username)
 	logger.Info("login request recieved")
 
@@ -63,7 +65,7 @@ func (u *UserAuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.
 			return nil, status.Errorf(codes.Unauthenticated, "invalid username or password")
 		}
 		logger.WithField("error", err).Error("error retrieving user by username")
-		return nil, status.Errorf(codes.Internal, "error retrieving user by username: %v", err)
+		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
 	// Check if the password is correct
@@ -74,43 +76,45 @@ func (u *UserAuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.
 			return nil, status.Errorf(codes.Unauthenticated, "invalid username or password")
 		}
 		logger.WithField("error", err).Error("error comparing password")
-		return nil, status.Errorf(codes.Internal, "error comparing password: %v", err)
+		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
 	// Generate a new session id
-	sessionID, err := u.sessionHandler.Generate(ctx, userData.ID)
+	sessionID, err := u.sessionHandler.Generate(ctx, credentials.Claims{
+		Subject:   userData.ID,
+		ExpiresAt: time.Now().Add(SessionExpTime),
+	})
 	if err != nil {
 		logger.WithField("error", err).Error("error generating authentication session")
-		return nil, status.Errorf(codes.Internal, "error generating authentication session: %v", err)
+		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
 	// Successful login
 	logger.Info("user logged in successfully")
-	return &pb.LoginResponse{
+	return &pb.UserLoginResponse{
 		SessionId: sessionID,
 	}, nil
 }
 
-func (u *UserAuthService) Logout(ctx context.Context, req *pb.LogoutRequest) (*pb.LogoutResponse, error) {
+func (u *UserAuthService) LogoutUser(ctx context.Context, req *pb.UserLogoutRequest) (*pb.UserLogoutResponse, error) {
 	logger := logrus.WithContext(ctx).WithField("session_id", req.SessionId)
 	logger.Info("logout request recieved")
 
-	_, err := u.sessionHandler.Invalidate(ctx, req.SessionId)
-	if err != nil {
+	if err := u.sessionHandler.Invalidate(ctx, req.SessionId); err != nil {
 		if err == credentials.ErrInvalidToken {
 			logger.WithField("error", err).Error("invalid or expired session")
 			return nil, status.Errorf(codes.Unauthenticated, "invalid or expired session")
 		}
 		logger.WithField("error", err).Error("error validating session")
-		return nil, status.Errorf(codes.Internal, "error validating session: %v", err)
+		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
 	// Successful logout
 	logger.Info("user logged out successfully")
-	return &pb.LogoutResponse{}, nil
+	return &pb.UserLogoutResponse{}, nil
 }
 
-func (u *UserAuthService) Consent(ctx context.Context, req *pb.ConsentRequest) (*pb.ConsentResponse, error) {
+func (u *UserAuthService) ConsentUser(ctx context.Context, req *pb.UserConsentRequest) (*pb.UserConsentResponse, error) {
 	logger := logrus.WithContext(ctx).WithField("session_id", req.SessionId).WithField("client_id", req.ClientId)
 	logger.Info("logout request recieved")
 
@@ -122,7 +126,7 @@ func (u *UserAuthService) Consent(ctx context.Context, req *pb.ConsentRequest) (
 			return nil, status.Errorf(codes.Unauthenticated, "invalid or expired session")
 		}
 		logger.WithField("error", err).Error("error validating session")
-		return nil, status.Errorf(codes.Internal, "error validating session: %v", err)
+		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
 	_ = userID
@@ -131,5 +135,5 @@ func (u *UserAuthService) Consent(ctx context.Context, req *pb.ConsentRequest) (
 	// Successful consent
 	logger.Info("user consent successfully")
 
-	return &pb.ConsentResponse{}, nil
+	return &pb.UserConsentResponse{}, nil
 }
