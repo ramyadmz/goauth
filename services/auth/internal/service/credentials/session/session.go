@@ -12,12 +12,16 @@ type SessionHandler struct {
 	DAL data.AuthProvider
 }
 
-func (s *SessionHandler) Generate(ctx context.Context, data interface{}) (string, error) {
-	userID := data.(int)
-	session, err := s.DAL.CreateSession(ctx, userID)
+func (s *SessionHandler) Generate(ctx context.Context, claims credentials.Claims) (string, error) {
+	session, err := s.DAL.CreateSession(ctx, data.CreateSessionParams{
+		UserID:    claims.Subject,
+		ExpiresAt: claims.ExpiresAt,
+	})
+
 	if err != nil {
 		return "", credentials.ErrGeneratingToken
 	}
+
 	return session.ID, nil
 }
 
@@ -30,7 +34,7 @@ func (s *SessionHandler) Validate(ctx context.Context, key string) (interface{},
 		return nil, err
 	}
 
-	if time.Now().After(session.ExpireAt) {
+	if time.Now().After(session.ExpiresAt) {
 		return nil, credentials.ErrInvalidToken
 	}
 

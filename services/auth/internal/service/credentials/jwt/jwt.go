@@ -25,23 +25,51 @@ func NewJWTService(cnfg *config.JWTConfig) *JWTService {
 	}
 }
 
-// GenerateToken generates a new JSON Web Token
-// It takes a 'subject' as an input and returns a signed token or an error.
-func (js *JWTService) Generate(ctx context.Context, data interface{}) (string, error) {
-	strData, ok := data.(string)
-	if !ok {
-		return "", fmt.Errorf("invalid data type for GenerateToken, expected string")
+type TokenType int
+
+const (
+	AccessToken TokenType = iota
+	RefreshToken
+)
+
+type JWTClaims struct {
+	Subject   int64
+	Issuer    string
+	IssuedAt  int64
+	ExpiresAt int64
+}
+
+func (j JWTClaims) Valid() error {
+	if j.Subject <= 0 {
+		return fmt.Errorf("invalid subject claim")
 	}
+
+	if j.IssuedAt >= time.Now().Unix() {
+		return fmt.Errorf("invalid issued_at claim")
+	}
+
+	if j.ExpiresAt <= time.Now().Unix() {
+		fmt.Errorf("expired token")
+	}
+
+	return nil
+}
+
+// GenerateToken generates a new JSON Web Token
+// It takes a 'subject' and 'tokenType' as input and returns a signed token or an error.
+func (js *JWTService) Generate(ctx context.Context, claims cred.Claims) (string, error) {
+
+	//userIDStr := strconv.FormatInt(claims.Subject, 10)
 	// Define the claims for the token
-	claims := jwt.StandardClaims{
-		Subject:   strData,
+	jwtClaims := JWTClaims{
+		Subject:   claims.Subject,
 		Issuer:    js.config.GetIssuer(),
 		IssuedAt:  time.Now().Unix(),
-		ExpiresAt: time.Now().Add(time.Duration(js.config.GetAccessTokenExp()) * time.Minute).Unix(),
+		ExpiresAt: claims.ExpiresAt.Unix(),
 	}
 
 	// Create a new JWT token with the claims
-	token := jwt.NewWithClaims(js.config.GetSigningMethod(), claims)
+	token := jwt.NewWithClaims(js.config.GetSigningMethod(), jwtClaims)
 
 	// Sign the token and return it
 	signedToken, err := token.SignedString([]byte(js.config.GetSecretKey()))
@@ -54,10 +82,10 @@ func (js *JWTService) Generate(ctx context.Context, data interface{}) (string, e
 }
 
 // ValidateToken validates a provided token string.
-func (js *JWTService) Validate(ctx context.Context, tokenString string) (interface{}, error) {
-	claims := &jwt.StandardClaims{}
+func (js *JWTService) Validate(ctx context.Context, token string) (*cred.Claims, error) {
+	claims := &JWTClaims{}
 
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+	jwtToken, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 		if token.Method != js.config.GetSigningMethod() {
 			return nil, fmt.Errorf("%w: %v", cred.ErrInvalidSigningMethod, token.Method.Alg())
 		}
@@ -68,21 +96,24 @@ func (js *JWTService) Validate(ctx context.Context, tokenString string) (interfa
 		return nil, fmt.Errorf("%w: %w", cred.ErrValidatingToken, err)
 	}
 
-	if err = token.Claims.Valid(); err != nil {
+	if err = jwtToken.Claims.Valid(); err != nil {
 		return nil, fmt.Errorf("%w: %w", cred.ErrInvalidToken, err)
 	}
-	return claims.Subject, nil
+
+	return &cred.Claims{
+		Subject:   claims.Subject,
+		ExpiresAt: time.Unix(claims.ExpiresAt, 0),
+	}, nil
 }
 
 // ValidateToken validates a provided token string.
-func (js *JWTService) Invalidate(ctx context.Context, tokenString string) (interface{}, error) {
+func (js *JWTService) Invalidate(ctx context.Context, tokenString string) error {
 	// todo: black list the token
-	return "", nil
+	return nil
 }
 
 // ValidateToken validates a provided token string.
 func (js *JWTService) Refresh(ctx context.Context, tokenString string) (string, error) {
-
 	// todo: refresh the token
 	return "", nil
 }
