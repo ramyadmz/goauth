@@ -6,6 +6,7 @@ require (
 	github.com/go-pg/pg/v11 v11.0.0-alpha.6
 	github.com/go-playground/validator/v10 v10.15.4
 	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/crypto v0.13.0
 	google.golang.org/grpc v1.57.0
 	google.golang.org/protobuf v1.31.0
@@ -17,9 +18,9 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/google/uuid v1.3.1
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/tmthrgd/go-hex v0.0.0-20190904060850-447a3041c3bc // indirect
 	github.com/vmihailenco/msgpack/v5 v5.2.0 // indirect
 	github.com/vmihailenco/tagparser v0.1.2 // indirect

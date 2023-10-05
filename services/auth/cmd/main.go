@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/ramyadmz/goauth/internal/service/user"
+	"github.com/ramyadmz/goauth/internal/service/auth"
 	"github.com/ramyadmz/goauth/pkg/pb"
 	"google.golang.org/grpc"
 )
@@ -15,12 +15,12 @@ func main() {
 		fmt.Printf("Failed to listen:%v", err)
 		return
 	}
-	authService := &user.UserAuthService{}
+	authService := &auth.UserAuthService{}
 	serviceOpts := []grpc.ServerOption{
-		grpc.ChainUnaryInterceptor(user.ValidationInterceptor),
+		grpc.ChainUnaryInterceptor(auth.ValidationInterceptor),
 	}
 	srv := grpc.NewServer(serviceOpts...)
-	pb.RegisterUserAuthServiceServer(srv, authService)
+	pb.RegisterOAuthServiceServer(srv, authService)
 	srv.Serve(listener)
 	if err != nil {
 		fmt.Printf("Failed to serve:%v", err)
