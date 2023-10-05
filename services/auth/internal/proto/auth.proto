@@ -31,7 +31,6 @@ message UserLogoutResponse{
 
 message UserConsentRequest {
     int64 client_id = 1;
-    string redirect_uri = 2;
     string session_id = 4;
 }  
 

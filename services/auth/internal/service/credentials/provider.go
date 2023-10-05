@@ -7,11 +7,11 @@ import (
 )
 
 var (
-	ErrGeneratingSecret     = errors.New("Error failed tp generate the secret")
-	ErrGeneratingToken      = errors.New("Error failed tp generate the token")
-	ErrValidatingToken      = errors.New("Error failed to parse the token")
-	ErrInvalidToken         = errors.New("Error token is invalid/expired")
-	ErrInvalidSigningMethod = errors.New("Unexpected signing method")
+	ErrGeneratingSecret     = errors.New("error failed tp generate the secret")
+	ErrGeneratingToken      = errors.New("error failed tp generate the token")
+	ErrValidatingToken      = errors.New("error failed to parse the token")
+	ErrInvalidToken         = errors.New("error token is invalid/expired")
+	ErrInvalidSigningMethod = errors.New("unexpected signing method")
 )
 
 type Claims struct {

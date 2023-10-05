@@ -22,8 +22,16 @@ const (
 
 type UserAuthService struct {
 	pb.UnimplementedOAuthServiceServer
-	DAL            data.AuthProvider
+	dal            data.AuthProvider
 	sessionHandler credentials.TokenHandler
+}
+
+// NewUserAuthService creates a new instance of ClientAuthService with the provided dependencies.
+func NewUserAuthService(dal data.AuthProvider, sessionHandler credentials.TokenHandler) *UserAuthService {
+	return &UserAuthService{
+		dal:            dal,
+		sessionHandler: sessionHandler,
+	}
 }
 
 func (u *UserAuthService) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) (*pb.RegisterUserResponse, error) {
@@ -38,7 +46,7 @@ func (u *UserAuthService) RegisterUser(ctx context.Context, req *pb.RegisterUser
 	}
 
 	// Create the user
-	_, err = u.DAL.CreateUser(ctx, data.CreateUserParams{
+	_, err = u.dal.CreateUser(ctx, data.CreateUserParams{
 		Username:       req.Username,
 		HashedPassword: hashedPassword,
 		Email:          req.Email,
@@ -58,7 +66,7 @@ func (u *UserAuthService) LoginUser(ctx context.Context, req *pb.UserLoginReques
 	logger.Info("login request recieved")
 
 	// Fetch user by username
-	userData, err := u.DAL.GetUserByUsername(ctx, req.Username)
+	userData, err := u.dal.GetUserByUsername(ctx, req.Username)
 	if err != nil {
 		if err == data.ErrUserNotFound {
 			logger.Error("invalid username or password: %w", err)
@@ -119,7 +127,7 @@ func (u *UserAuthService) ConsentUser(ctx context.Context, req *pb.UserConsentRe
 	logger.Info("logout request recieved")
 
 	// Validate the token
-	userID, err := u.sessionHandler.Validate(ctx, req.SessionId)
+	claims, err := u.sessionHandler.Validate(ctx, req.SessionId)
 	if err != nil {
 		if err == credentials.ErrInvalidToken {
 			logger.Error("invalid or expired session: %w", err)
@@ -129,11 +137,27 @@ func (u *UserAuthService) ConsentUser(ctx context.Context, req *pb.UserConsentRe
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
-	_ = userID
-	// todo check app id existance and create atho code and grant record
+	client, err := u.dal.GetClientByID(ctx, req.ClientId)
+	if err != nil {
+		if err == data.ErrClientNotFound {
+			logger.Warn("client doesnt exist")
+			return nil, status.Errorf(codes.InvalidArgument, "client doesn't exist")
+		}
+		logger.Error("error validating client: %w", err)
+		return nil, status.Errorf(codes.Internal, "Internal server error")
+	}
+
+	_, err = u.dal.CreateAuthorization(ctx, data.CreateAuthorizationParams{
+		UserID:   claims.Subject,
+		ClientID: client.ID,
+		Scope:    "", // todo add scope
+	})
+	if err != nil {
+		logger.Error("error creating authorization: %w", err)
+		return nil, status.Errorf(codes.Internal, "Internal server error")
+	}
 
 	// Successful consent
 	logger.Info("user consent successfully")
-
 	return &pb.UserConsentResponse{}, nil
 }

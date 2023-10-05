@@ -41,15 +41,15 @@ type JWTClaims struct {
 
 func (j JWTClaims) Valid() error {
 	if j.Subject <= 0 {
-		return fmt.Errorf("invalid subject claim")
+		return fmt.Errorf("invalid subject claim: %d", j.Subject)
 	}
 
 	if j.IssuedAt >= time.Now().Unix() {
-		return fmt.Errorf("invalid issued_at claim")
+		return fmt.Errorf("invalid issued_at claim : %d", j.IssuedAt)
 	}
 
 	if j.ExpiresAt <= time.Now().Unix() {
-		fmt.Errorf("expired token")
+		return fmt.Errorf("token is expired: %d", j.ExpiresAt)
 	}
 
 	return nil

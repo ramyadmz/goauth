@@ -23,8 +23,16 @@ const (
 
 type ClientAuthService struct {
 	pb.UnimplementedOAuthServiceServer
-	DAL data.AuthProvider
-	jwt credentials.TokenHandler
+	dal          data.AuthProvider
+	tokenHandler credentials.TokenHandler
+}
+
+// NewClientAuthService creates a new instance of ClientAuthService with the provided dependencies.
+func NewClientAuthService(dal data.AuthProvider, tokenHandler credentials.TokenHandler) *ClientAuthService {
+	return &ClientAuthService{
+		dal:          dal,
+		tokenHandler: tokenHandler,
+	}
 }
 
 func (c *ClientAuthService) RegisterClient(ctx context.Context, req *pb.RegisterClientRequest) (*pb.RegisterClientResponse, error) {
@@ -42,7 +50,7 @@ func (c *ClientAuthService) RegisterClient(ctx context.Context, req *pb.Register
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
-	clientData, err := c.DAL.CreateClient(ctx, data.CreateClientParams{
+	clientData, err := c.dal.CreateClient(ctx, data.CreateClientParams{
 		Name:         req.Name,
 		Website:      req.Website,
 		Scope:        req.Scope,
@@ -65,7 +73,7 @@ func (c *ClientAuthService) RegisterClient(ctx context.Context, req *pb.Register
 func (c *ClientAuthService) GetAuthorizationCode(ctx context.Context, req *pb.GetAuthorizationCodeRequest) (*pb.GetAuthorizationCodeResponse, error) {
 	logger := logrus.WithContext(ctx).WithField("clientID", req.ClientId).WithField("username", req.Username)
 
-	client, err := c.DAL.GetClientByID(ctx, req.ClientId)
+	client, err := c.dal.GetClientByID(ctx, req.ClientId)
 	if err != nil {
 		if err == data.ErrClientNotFound {
 			logger.Warn("Invalid client id: %w", err)
@@ -85,7 +93,7 @@ func (c *ClientAuthService) GetAuthorizationCode(ctx context.Context, req *pb.Ge
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
-	user, err := c.DAL.GetUserByUsername(ctx, req.Username)
+	user, err := c.dal.GetUserByUsername(ctx, req.Username)
 	if err != nil {
 		if err == data.ErrClientNotFound {
 			logger.Warn("invalid username: %w", err)
@@ -95,7 +103,7 @@ func (c *ClientAuthService) GetAuthorizationCode(ctx context.Context, req *pb.Ge
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
-	auth, err := c.DAL.GetAuthorizationCodeByUserIDAndClientID(ctx, user.ID, req.ClientId)
+	auth, err := c.dal.GetAuthorizationCodeByUserIDAndClientID(ctx, user.ID, req.ClientId)
 	if err != nil {
 		if err == data.ErrAuthorizationNotFound {
 			logger.Warn("auth not found: %w", err)
@@ -114,7 +122,7 @@ func (c *ClientAuthService) GetAuthorizationCode(ctx context.Context, req *pb.Ge
 func (c *ClientAuthService) ExchangeToken(ctx context.Context, req *pb.ExchangeTokenRequest) (*pb.ExchangeTokenResponse, error) {
 	logger := logrus.WithContext(ctx).WithField("clientID", req.ClientId)
 
-	client, err := c.DAL.GetClientByID(ctx, req.ClientId)
+	client, err := c.dal.GetClientByID(ctx, req.ClientId)
 	if err != nil {
 		if err == data.ErrClientNotFound {
 			logger.Warn("Invalid client id: %w", err)
@@ -134,7 +142,7 @@ func (c *ClientAuthService) ExchangeToken(ctx context.Context, req *pb.ExchangeT
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
-	auth, err := c.DAL.GetAuthorizationCodeByAuthCode(ctx, req.AuthorizationCode)
+	auth, err := c.dal.GetAuthorizationCodeByAuthCode(ctx, req.AuthorizationCode)
 	if err != nil {
 		if err == data.ErrAuthorizationNotFound {
 			logger.Warn("Invalid auth code: %w", err)
@@ -145,11 +153,11 @@ func (c *ClientAuthService) ExchangeToken(ctx context.Context, req *pb.ExchangeT
 	}
 
 	if auth.ClientID != req.ClientId {
-		logger.Warn("Mismatched Client IDs: auth.ClientID = %s, req.ClientID = %s", auth.ClientID, req.ClientId)
+		logger.Warnf("Mismatched Client IDs: auth.ClientID = %d, req.ClientID = %d", auth.ClientID, req.ClientId)
 		return nil, status.Errorf(codes.Unauthenticated, "Invalid authorization code.")
 	}
 
-	accessToken, err := c.jwt.Generate(ctx, credentials.Claims{
+	accessToken, err := c.tokenHandler.Generate(ctx, credentials.Claims{
 		Subject:   auth.UserID,
 		ExpiresAt: time.Now().Add(AccessTokenExp),
 	})
@@ -159,7 +167,7 @@ func (c *ClientAuthService) ExchangeToken(ctx context.Context, req *pb.ExchangeT
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
-	refreshToken, err := c.jwt.Generate(ctx, credentials.Claims{
+	refreshToken, err := c.tokenHandler.Generate(ctx, credentials.Claims{
 		Subject:   auth.UserID,
 		ExpiresAt: time.Now().Add(RefreshTokenExp),
 	})
@@ -179,7 +187,7 @@ func (c *ClientAuthService) ExchangeToken(ctx context.Context, req *pb.ExchangeT
 func (c *ClientAuthService) RefreshToken(ctx context.Context, req *pb.RefreshTokenRequest) (*pb.RefreshTokenResponse, error) {
 	logger := logrus.WithContext(ctx).WithField("refreshToken", req.RefreshToken)
 
-	claims, err := c.jwt.Validate(ctx, req.RefreshToken)
+	claims, err := c.tokenHandler.Validate(ctx, req.RefreshToken)
 
 	if err != nil {
 		if errors.Is(err, credentials.ErrInvalidToken) {
@@ -191,7 +199,7 @@ func (c *ClientAuthService) RefreshToken(ctx context.Context, req *pb.RefreshTok
 		}
 	}
 
-	accessToken, err := c.jwt.Generate(ctx, credentials.Claims{
+	accessToken, err := c.tokenHandler.Generate(ctx, credentials.Claims{
 		Subject:   claims.Subject,
 		ExpiresAt: time.Now().Add(AccessTokenExp),
 	})
