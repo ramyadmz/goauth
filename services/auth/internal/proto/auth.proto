@@ -4,44 +4,89 @@ package proto;
 
 option go_package = "github.com/ramyadmz/goauth/services/auth/pkg/pb";
 
-message RegisterRequest{
+message RegisterUserRequest{
     string username = 1;
     string password = 2;
     string email = 3;
 }
 
-message RegisterResponse{
+message RegisterUserResponse{
 }
 
-message LoginRequest{
+message UserLoginRequest{
     string username = 1;
     string password = 2;
 }
 
-message LoginResponse{
+message UserLoginResponse{
     string session_id = 1;
 }
 
-message ConsentRequest {
-    string client_id = 1;
+message UserLogoutRequest{
+    string session_id = 2;
+}
+
+message UserLogoutResponse{
+}
+
+message UserConsentRequest {
+    int64 client_id = 1;
     string redirect_uri = 2;
     string session_id = 4;
 }  
 
-message ConsentResponse {
+message UserConsentResponse {
 }
 
-message LogoutRequest{
-    string session_id = 2;
+message RegisterClientRequest {
+    string name = 1;
+    string website = 2;
+    string scope = 3;
 }
 
-message LogoutResponse{
+message RegisterClientResponse {
+    int64 client_id = 1;
+    string client_secret = 2;
 }
 
-service UserAuthService {
-    rpc Register (RegisterRequest) returns (RegisterResponse);
-    rpc Login (LoginRequest) returns (LoginResponse);
-    rpc Logout (LogoutRequest) returns (LogoutResponse);
-    rpc Consent (ConsentRequest) returns (ConsentResponse);
+message GetAuthorizationCodeRequest {
+    int64 client_id = 1;
+    string client_secret = 2;
+    string username = 3;
+}
+
+message GetAuthorizationCodeResponse {
+    string authorization_code = 1;
+}
+
+message ExchangeTokenRequest {
+    int64 client_id = 1;
+    string client_secret = 2;
+    string authorization_code = 3;
+}
+
+message ExchangeTokenResponse {
+    string access_token = 1;
+    string refresh_token = 2;
+}
+
+message RefreshTokenRequest {
+    string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+    string access_token = 1;
+}
+
+service OAuthService {
+    rpc RegisterUser (RegisterUserRequest) returns (RegisterUserResponse);
+    rpc UserLogin (UserLoginRequest) returns (UserLoginResponse);
+    rpc UserLogout (UserLogoutRequest) returns (UserLogoutResponse);
+    rpc UserConsent (UserConsentRequest) returns (UserConsentResponse);
+
+    rpc RegisterClient (RegisterClientRequest) returns (RegisterClientResponse);
+    rpc GetAuthorizationCode (GetAuthorizationCodeRequest) returns (GetAuthorizationCodeResponse);
+    rpc ExchangeToken (ExchangeTokenRequest) returns (ExchangeTokenResponse);
+    rpc RefreshToken (RefreshTokenRequest) returns (RefreshTokenResponse);
 }
 
