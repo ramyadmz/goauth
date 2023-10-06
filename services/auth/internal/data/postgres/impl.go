@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-pg/pg/v11"
@@ -30,7 +31,7 @@ func (p *PostgresProvider) CreateUser(ctx context.Context, params data.CreateUse
 	_, err := p.db.Model(user).Insert(ctx)
 	if err != nil {
 		logger.Error("Error creating user: %w", err)
-		return nil, data.ErrUserCreation
+		return nil, fmt.Errorf("failed to insert new user record: %w", err)
 	}
 
 	logger.Info("user created successfully")
@@ -85,8 +86,8 @@ func (p *PostgresProvider) CreateSession(ctx context.Context, params data.Create
 
 	_, err := p.db.Model(session).Insert(ctx)
 	if err != nil {
-		logger.Error(data.ErrSessionCreation)
-		return nil, data.ErrSessionCreation
+		logger.Errorf("failed to insert new session record: %w", err)
+		return nil, fmt.Errorf("failed to insert new session record: %w", err)
 	}
 
 	logger.Info("session created successfully")
@@ -160,7 +161,7 @@ func (p *PostgresProvider) CreateClient(ctx context.Context, params data.CreateC
 	_, err := p.db.Model(client).Returning("id").Insert(ctx)
 	if err != nil {
 		logger.Error("error creating client: %w", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to insert new client record: %w", err)
 	}
 
 	logger.Info("client created successfully")

@@ -11,10 +11,7 @@ var (
 	ErrClientNotFound        = errors.New("client not found")
 	ErrSessionNotFound       = errors.New("session not found")
 	ErrAuthorizationNotFound = errors.New("auth code not found")
-	ErrUserCreation          = errors.New("failed to create user")
-	ErrSessionCreation       = errors.New("failed to create session")
 	ErrInvalidCredential     = errors.New("invalid credentials")
-	// Add more as needed
 )
 
 type CreateClientParams struct {
