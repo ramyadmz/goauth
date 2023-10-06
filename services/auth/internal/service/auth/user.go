@@ -124,7 +124,7 @@ func (u *UserAuthService) LogoutUser(ctx context.Context, req *pb.UserLogoutRequ
 
 func (u *UserAuthService) ConsentUser(ctx context.Context, req *pb.UserConsentRequest) (*pb.UserConsentResponse, error) {
 	logger := logrus.WithContext(ctx).WithField("session_id", req.SessionId).WithField("client_id", req.ClientId)
-	logger.Info("logout request recieved")
+	logger.Info("consent request recieved")
 
 	// Validate the token
 	claims, err := u.sessionHandler.Validate(ctx, req.SessionId)
@@ -152,6 +152,7 @@ func (u *UserAuthService) ConsentUser(ctx context.Context, req *pb.UserConsentRe
 		ClientID: client.ID,
 		Scope:    "", // todo add scope
 	})
+
 	if err != nil {
 		logger.Error("error creating authorization: %w", err)
 		return nil, status.Errorf(codes.Internal, "Internal server error")
