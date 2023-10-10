@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -40,16 +41,24 @@ type JWTClaims struct {
 }
 
 func (j JWTClaims) Valid() error {
+	vErr := new(jwt.ValidationError)
 	if j.Subject <= 0 {
-		return fmt.Errorf("invalid subject claim: %d", j.Subject)
+		vErr.Inner = errors.New("invalid subject")
+		vErr.Errors |= jwt.ValidationErrorId
 	}
 
-	if j.IssuedAt >= time.Now().Unix() {
-		return fmt.Errorf("invalid issued_at claim : %d", j.IssuedAt)
+	if j.IssuedAt > time.Now().Unix() {
+		vErr.Inner = errors.New("token used before issued")
+		vErr.Errors |= jwt.ValidationErrorIssuedAt
 	}
 
 	if j.ExpiresAt <= time.Now().Unix() {
-		return fmt.Errorf("token is expired: %d", j.ExpiresAt)
+		vErr.Inner = errors.New("token is expired")
+		vErr.Errors |= jwt.ValidationErrorExpired
+	}
+
+	if vErr.Errors > 0 {
+		return vErr
 	}
 
 	return nil
@@ -66,6 +75,10 @@ func (js *JWTService) Generate(ctx context.Context, claims cred.Claims) (string,
 		Issuer:    js.config.GetIssuer(),
 		IssuedAt:  time.Now().Unix(),
 		ExpiresAt: claims.ExpiresAt.Unix(),
+	}
+
+	if err := jwtClaims.Valid(); err != nil {
+		return "", err
 	}
 
 	// Create a new JWT token with the claims
@@ -93,16 +106,23 @@ func (js *JWTService) Validate(ctx context.Context, token string) (*cred.Claims,
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", cred.ErrValidatingToken, err)
+		if ve, ok := err.(*jwt.ValidationError); ok {
+			if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet|jwt.ValidationErrorId) != 0 {
+				return nil, cred.ErrInvalidToken
+			}
+		}
+		return nil, cred.ErrValidatingToken
 	}
 
-	if err = jwtToken.Claims.Valid(); err != nil {
-		return nil, fmt.Errorf("%w: %w", cred.ErrInvalidToken, err)
+	parsedClaims, ok := jwtToken.Claims.(*JWTClaims)
+
+	if !ok || !jwtToken.Valid {
+		return nil, cred.ErrInvalidToken
 	}
 
 	return &cred.Claims{
-		Subject:   claims.Subject,
-		ExpiresAt: time.Unix(claims.ExpiresAt, 0),
+		Subject:   parsedClaims.Subject,
+		ExpiresAt: time.Unix(parsedClaims.ExpiresAt, 0),
 	}, nil
 }
 

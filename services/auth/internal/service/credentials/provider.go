@@ -12,6 +12,7 @@ var (
 	ErrValidatingToken      = errors.New("error failed to parse the token")
 	ErrInvalidToken         = errors.New("error token is invalid/expired")
 	ErrInvalidSigningMethod = errors.New("unexpected signing method")
+	ErrInvalidClaims        = errors.New("invalid claims")
 )
 
 type Claims struct {

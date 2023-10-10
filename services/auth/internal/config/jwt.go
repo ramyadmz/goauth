@@ -41,7 +41,7 @@ func (b *JWTConfigBuilder) FromEnv() *JWTConfigBuilder {
 // Validate checks if the JWTConfig object has valid fields.
 func (b *JWTConfigBuilder) Validate() error {
 	if b.config.signingMethod == nil {
-		return errors.New("SigningMethod must is not valid")
+		return errors.New("SigningMethod is not valid")
 	}
 
 	if b.config.secretKey == "" {
