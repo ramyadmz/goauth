@@ -4,14 +4,14 @@ CREATE TABLE users (
     hashed_password VARCHAR(128) NOT NULL,
     email VARCHAR(50) UNIQUE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE sessions (
   id VARCHAR(128) PRIMARY KEY,
   user_id INT REFERENCES users(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  expires_at TIMESTAMP,
+  expires_at TIMESTAMP
 );
 
 CREATE TABLE clients (
@@ -21,7 +21,7 @@ CREATE TABLE clients (
     website VARCHAR(50) UNIQUE NOT NULL,
     scope VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE authorization_codes (
@@ -31,5 +31,5 @@ CREATE TABLE authorization_codes (
     scope VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP NOT NULL,
-    is_revoked BOOLEAN NOT NULL,
+    is_revoked BOOLEAN NOT NULL
 );
