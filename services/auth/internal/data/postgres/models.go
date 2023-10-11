@@ -7,7 +7,7 @@ import (
 )
 
 type User struct {
-	tableName      struct{}  `pg:"Users"`
+	tableName      struct{}  `pg:"users"`
 	ID             int64     `pg:"id,serial,pk"`
 	Username       string    `pg:"username,unique,notnull"`
 	HashedPassword []byte    `pg:"hashed_password,notnull"`
@@ -17,7 +17,7 @@ type User struct {
 }
 
 type Session struct {
-	tableName struct{}  `pg:"Sessions"`
+	tableName struct{}  `pg:"sessions"`
 	ID        string    `pg:"id,pk"`
 	UserID    int64     `pg:"user_id,notnull"`
 	CreatedAt time.Time `pg:"created_at,default:now()"`
@@ -25,7 +25,7 @@ type Session struct {
 }
 
 type Client struct {
-	tableName    struct{}  `pg:"Clients"`
+	tableName    struct{}  `pg:"clients"`
 	ID           int64     `pg:"id,serial,pk"`
 	HashedSecret []byte    `pg:"hashed_secret,notnull"`
 	Name         string    `pg:"name,unique,notnull"`
@@ -36,7 +36,7 @@ type Client struct {
 }
 
 type Authorization struct {
-	tableName struct{}  `pg:"Authorizations"`
+	tableName struct{}  `pg:"authorizations"`
 	AuthCode  string    `pg:"auth_code,pk"`
 	UserID    int64     `pg:"user_id,notnull"`
 	ClientID  int64     `pg:"client_id,notnull"`

@@ -11,6 +11,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// type dbLogger struct{}
+
+// func (d dbLogger) BeforeQuery(ctx context.Context, q *pg.QueryEvent) (context.Context, error) {
+// 	return ctx, nil
+// }
+
+// func (d dbLogger) AfterQuery(ctx context.Context, q *pg.QueryEvent) error {
+// 	query, _ := q.FormattedQuery()
+// 	fmt.Println(string(query))
+// 	return nil
+// }
+// p.db.AddQueryHook(dbLogger{})
+
 // PostgresProvider implements the AuthProvider interface using PostgreSQL as a backend.
 type PostgresProvider struct {
 	db *pg.DB
@@ -18,6 +31,12 @@ type PostgresProvider struct {
 
 // Compile-time check to ensure PostgresProvider satisfies the data.AuthProvider interface.
 var _ data.AuthProvider = new(PostgresProvider)
+
+func NewPostgresProvider(db *pg.DB) *PostgresProvider {
+	return &PostgresProvider{
+		db: db,
+	}
+}
 
 // CreateUser creates a new user in the database.
 func (p *PostgresProvider) CreateUser(ctx context.Context, params data.CreateUserParams) (*data.User, error) {
@@ -59,9 +78,9 @@ func (p *PostgresProvider) GetUserByID(ctx context.Context, userID int64) (*data
 
 func (p *PostgresProvider) GetUserByUsername(ctx context.Context, username string) (*data.User, error) {
 	logger := logrus.WithContext(ctx).WithField("username", username)
-	user := &User{Username: username}
+	user := &User{}
 
-	err := p.db.Model(user).Select(ctx)
+	err := p.db.Model(user).Where("username = ?", username).Select(ctx)
 	if err != nil {
 		if err == pg.ErrNoRows {
 			logger.Error(data.ErrUserNotFound)
@@ -86,7 +105,7 @@ func (p *PostgresProvider) CreateSession(ctx context.Context, params data.Create
 
 	_, err := p.db.Model(session).Insert(ctx)
 	if err != nil {
-		logger.Errorf("failed to insert new session record: %w", err)
+		logger.Errorf("failed to insert new session record: %s", err)
 		return nil, fmt.Errorf("failed to insert new session record: %w", err)
 	}
 
@@ -174,7 +193,7 @@ func (p *PostgresProvider) GetClientByID(ctx context.Context, clientID int64) (*
 		ID: clientID,
 	}
 
-	err := p.db.Model(client).Select(ctx)
+	err := p.db.Model(client).WherePK().Select(ctx)
 	if err != nil {
 		if err == pg.ErrNoRows {
 			logger.Error(data.ErrClientNotFound)
@@ -230,12 +249,9 @@ func (p *PostgresProvider) GetAuthorizationCodeByAuthCode(ctx context.Context, a
 
 func (p *PostgresProvider) GetAuthorizationCodeByUserIDAndClientID(ctx context.Context, userID, clientID int64) (*data.Authorization, error) {
 	logger := logrus.WithContext(ctx).WithField("userID", userID).WithField("clientID", clientID)
-	authorization := &Authorization{
-		ClientID: clientID,
-		UserID:   userID,
-	}
+	authorization := &Authorization{}
 
-	err := p.db.Model(authorization).Select(ctx)
+	err := p.db.Model(authorization).Where("client_id = ? AND user_id = ?", clientID, userID).Select(ctx)
 	if err != nil {
 		if err == pg.ErrNoRows {
 			logger.Error(data.ErrAuthorizationNotFound)
