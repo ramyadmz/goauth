@@ -27,7 +27,7 @@ func TestGenerate_Success(t *testing.T) {
 		t.Fatalf("invalid jwt config: %s", err)
 	}
 
-	jwtHandler := NewJWTService(config)
+	jwtHandler := NewJWTHandler(config)
 	token, err := jwtHandler.Generate(context.Background(), claims)
 	assert.Equal(t, nil, err)
 	assert.NotEqual(t, 0, len(token))
@@ -46,7 +46,7 @@ func TestGenerate_InvalidClaims(t *testing.T) {
 		t.Fatalf("invalid jwt config: %s", err)
 	}
 
-	jwtHandler := NewJWTService(config)
+	jwtHandler := NewJWTHandler(config)
 	_, err = jwtHandler.Generate(context.Background(), claims)
 
 	assert.Equal(t, true, errors.Is(err, credentials.ErrInvalidClaims))
@@ -66,7 +66,7 @@ func TestValidate_Success(t *testing.T) {
 		t.Fatalf("invalid jwt config: %s", err)
 	}
 
-	jwtHandler := NewJWTService(config)
+	jwtHandler := NewJWTHandler(config)
 	token, err := jwtHandler.Generate(context.Background(), claims)
 	if err != nil {
 		t.Fatalf("generating token failed: %s", err)
@@ -92,7 +92,7 @@ func TestValidate_ExpiredToken(t *testing.T) {
 		t.Fatalf("invalid jwt config: %s", err)
 	}
 
-	jwtHandler := NewJWTService(config)
+	jwtHandler := NewJWTHandler(config)
 	expiredToken, err := jwtHandler.Generate(context.Background(), claims)
 	if err != nil {
 		t.Fatalf("generating token failed: %s", err)

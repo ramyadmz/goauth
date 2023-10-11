@@ -12,16 +12,16 @@ import (
 )
 
 // Compile time check for TokenHandler interface satisfaction.
-var _ cred.TokenHandler = new(JWTService)
+var _ cred.TokenHandler = new(JWTHandler)
 
-// JWTService manages JSON Web Token operations
-type JWTService struct {
+// JWTHandler manages JSON Web Token operations
+type JWTHandler struct {
 	config *config.JWTConfig // JWT configuration
 }
 
-// NewJWTService creates a new instance of JWTService
-func NewJWTService(cnfg *config.JWTConfig) *JWTService {
-	return &JWTService{
+// NewJWTHandler creates a new instance of JWTHandler
+func NewJWTHandler(cnfg *config.JWTConfig) *JWTHandler {
+	return &JWTHandler{
 		config: cnfg,
 	}
 }
@@ -66,7 +66,7 @@ func (j JWTClaims) Valid() error {
 
 // GenerateToken generates a new JSON Web Token
 // It takes a 'subject' and 'tokenType' as input and returns a signed token or an error.
-func (js *JWTService) Generate(ctx context.Context, claims cred.Claims) (string, error) {
+func (js *JWTHandler) Generate(ctx context.Context, claims cred.Claims) (string, error) {
 
 	//userIDStr := strconv.FormatInt(claims.Subject, 10)
 	// Define the claims for the token
@@ -95,7 +95,7 @@ func (js *JWTService) Generate(ctx context.Context, claims cred.Claims) (string,
 }
 
 // ValidateToken validates a provided token string.
-func (js *JWTService) Validate(ctx context.Context, token string) (*cred.Claims, error) {
+func (js *JWTHandler) Validate(ctx context.Context, token string) (*cred.Claims, error) {
 	claims := &JWTClaims{}
 
 	jwtToken, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
@@ -127,13 +127,13 @@ func (js *JWTService) Validate(ctx context.Context, token string) (*cred.Claims,
 }
 
 // ValidateToken validates a provided token string.
-func (js *JWTService) Invalidate(ctx context.Context, tokenString string) error {
+func (js *JWTHandler) Invalidate(ctx context.Context, tokenString string) error {
 	// todo: black list the token
 	return nil
 }
 
 // ValidateToken validates a provided token string.
-func (js *JWTService) Refresh(ctx context.Context, tokenString string) (string, error) {
+func (js *JWTHandler) Refresh(ctx context.Context, tokenString string) (string, error) {
 	// todo: refresh the token
 	return "", nil
 }
