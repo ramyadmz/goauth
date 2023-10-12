@@ -1,0 +1,31 @@
+services:
+  auth:
+    build:
+      context: ../  # Directory where the Dockerfile is
+      dockerfile: Dockerfile  # The name of your Dockerfile
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    environment:
+      AUTH_POSTGRES_HOST: auth-db
+      AUTH_POSTGRES_USER: postgres
+      AUTH_POSTGRES_PASSWORD: password
+      AUTH_POSTGRES_DB: auth
+      ACK_GINKGO_RC: true  # Add this line
+    working_dir: /app/integration
+    command: ["make","test-with-migrations"]
+
+  auth-db:
+    image: postgres:13
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: auth
+    

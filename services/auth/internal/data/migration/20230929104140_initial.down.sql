@@ -1,5 +1,6 @@
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS clients;
-DROP TABLE IF EXISTS sessions;
 DROP TABLE IF EXISTS authorization_codes;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS clients;
+DROP TABLE IF EXISTS users;
+
 

@@ -2,6 +2,8 @@ package integration
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/go-pg/pg/v11"
 	. "github.com/onsi/ginkgo"
@@ -26,19 +28,22 @@ var _ = Describe("CreateUser", func() {
 	)
 
 	BeforeEach(func() {
-		// Initialize database connection
-		db := pg.Connect(&pg.Options{
-			Addr:     "127.0.0.1:5432", // adjust as necessary
-			User:     "postgres",
-			Password: "123",
-			Database: "postgres",
-		})
 		ctx = context.Background()
+		dbUser := os.Getenv("AUTH_POSTGRES_USER")
+		dbPassword := os.Getenv("AUTH_POSTGRES_PASSWORD")
+		dbName := os.Getenv("AUTH_POSTGRES_DB")
+
+		dbHost := os.Getenv("AUTH_POSTGRES_HOST")
+		options := &pg.Options{
+			Addr:     fmt.Sprintf("%s:5432", dbHost), // Ensure dbHost is used here
+			User:     dbUser,
+			Password: dbPassword,
+			Database: dbName,
+		}
+		db := pg.Connect(options)
 		dal = postgres.NewPostgresProvider(db)
 		sessionHandler := session.NewSessionHandler(dal)
 		userAuth = auth.NewUserAuthService(dal, sessionHandler)
-
-		// TODO: Add any database setup here, like creating tables
 	})
 
 	AfterEach(func() {
@@ -46,6 +51,7 @@ var _ = Describe("CreateUser", func() {
 		// TODO: Remove any data that was inserted into the database
 	})
 	Context("when registering a new user", func() {
+		fmt.Println(".................................................")
 		It("should successfully register and store the user", func() {
 			// Test logic remains mostly the same
 			_, err := userAuth.RegisterUser(ctx, &pb.RegisterUserRequest{
