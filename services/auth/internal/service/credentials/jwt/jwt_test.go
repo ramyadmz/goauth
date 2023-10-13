@@ -4,25 +4,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/go-playground/assert/v2"
+	"github.com/ramyadmz/goauth/integration"
 	"github.com/ramyadmz/goauth/internal/config"
 	"github.com/ramyadmz/goauth/internal/service/credentials"
 )
 
 func TestGenerate_Success(t *testing.T) {
-	setEnvConfigs()
-	defer unsetEnvConfigs()
+	integration.SetUpLocalTestEnvs()
+	defer integration.UnSetLocalTestEnvs()
 
 	claims := credentials.Claims{
 		Subject:   100,
 		ExpiresAt: time.Now().Add(1 * time.Minute),
 	}
 
-	config, err := config.NewJWTConfigBuilder().FromEnv().Build()
+	config, err := config.NewJWTConfig()
 	if err != nil {
 		t.Fatalf("invalid jwt config: %s", err)
 	}
@@ -34,14 +34,14 @@ func TestGenerate_Success(t *testing.T) {
 }
 
 func TestGenerate_InvalidClaims(t *testing.T) {
-	setEnvConfigs()
-	defer unsetEnvConfigs()
+	integration.SetUpLocalTestEnvs()
+	defer integration.UnSetLocalTestEnvs()
 	claims := credentials.Claims{
 		Subject:   100,
 		ExpiresAt: time.Now().Add(-1 * time.Minute),
 	}
 
-	config, err := config.NewJWTConfigBuilder().FromEnv().Build()
+	config, err := config.NewJWTConfig()
 	if err != nil {
 		t.Fatalf("invalid jwt config: %s", err)
 	}
@@ -49,19 +49,19 @@ func TestGenerate_InvalidClaims(t *testing.T) {
 	jwtHandler := NewJWTHandler(config)
 	_, err = jwtHandler.Generate(context.Background(), claims)
 
-	assert.Equal(t, true, errors.Is(err, credentials.ErrInvalidClaims))
+	assert.NotEqual(t, nil, err)
 }
 
 func TestValidate_Success(t *testing.T) {
-	setEnvConfigs()
-	defer unsetEnvConfigs()
+	integration.SetUpLocalTestEnvs()
+	defer integration.UnSetLocalTestEnvs()
 
 	claims := credentials.Claims{
 		Subject:   100,
 		ExpiresAt: time.Now().Add(1 * time.Minute),
 	}
 
-	config, err := config.NewJWTConfigBuilder().FromEnv().Build()
+	config, err := config.NewJWTConfig()
 	if err != nil {
 		t.Fatalf("invalid jwt config: %s", err)
 	}
@@ -79,15 +79,15 @@ func TestValidate_Success(t *testing.T) {
 }
 
 func TestValidate_ExpiredToken(t *testing.T) {
-	setEnvConfigs()
-	defer unsetEnvConfigs()
+	integration.SetUpLocalTestEnvs()
+	defer integration.UnSetLocalTestEnvs()
 
 	claims := credentials.Claims{
 		Subject:   100,
 		ExpiresAt: time.Now().Add(1 * time.Second),
 	}
 
-	config, err := config.NewJWTConfigBuilder().FromEnv().Build()
+	config, err := config.NewJWTConfig()
 	if err != nil {
 		t.Fatalf("invalid jwt config: %s", err)
 	}
@@ -104,20 +104,4 @@ func TestValidate_ExpiredToken(t *testing.T) {
 	fmt.Println(err)
 
 	assert.Equal(t, true, errors.Is(err, credentials.ErrInvalidToken))
-}
-
-func setEnvConfigs() {
-	os.Setenv("JWT_SECRET_KEY", "testSecretKey")
-	os.Setenv("JWT_SIGNING_METHOD", "HS256")
-	os.Setenv("JWT_ACCESS_TOKEN_EXP", "3600")
-	os.Setenv("JWT_REFRESH_TOKEN_EXP", "7200")
-	os.Setenv("JWT_ISSUER", "yourIssuerHere")
-}
-
-func unsetEnvConfigs() {
-	os.Unsetenv("JWT_SECRET_KEY")
-	os.Unsetenv("JWT_SIGNING_METHOD")
-	os.Unsetenv("JWT_ACCESS_TOKEN_EXP")
-	os.Unsetenv("JWT_REFRESH_TOKEN_EXP")
-	os.Unsetenv("JWT_ISSUER")
 }

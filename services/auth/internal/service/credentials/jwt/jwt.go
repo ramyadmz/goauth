@@ -2,7 +2,6 @@ package jwt
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -43,21 +42,19 @@ type JWTClaims struct {
 func (j JWTClaims) Valid() error {
 	vErr := new(jwt.ValidationError)
 	if j.Subject <= 0 {
-		vErr.Inner = errors.New("invalid subject")
 		vErr.Errors |= jwt.ValidationErrorId
 	}
 
 	if j.IssuedAt > time.Now().Unix() {
-		vErr.Inner = errors.New("token used before issued")
 		vErr.Errors |= jwt.ValidationErrorIssuedAt
 	}
 
 	if j.ExpiresAt <= time.Now().Unix() {
-		vErr.Inner = errors.New("token is expired")
 		vErr.Errors |= jwt.ValidationErrorExpired
 	}
 
 	if vErr.Errors > 0 {
+		vErr.Inner = cred.ErrInvalidClaims
 		return vErr
 	}
 
@@ -82,10 +79,10 @@ func (js *JWTHandler) Generate(ctx context.Context, claims cred.Claims) (string,
 	}
 
 	// Create a new JWT token with the claims
-	token := jwt.NewWithClaims(js.config.GetSigningMethod(), jwtClaims)
+	token := jwt.NewWithClaims(jwt.GetSigningMethod(js.config.GetAlgorithm()), jwtClaims)
 
 	// Sign the token and return it
-	signedToken, err := token.SignedString([]byte(js.config.GetSecretKey()))
+	signedToken, err := token.SignedString([]byte(js.config.GetSecret()))
 	if err != nil {
 		// Wrap the upper-level error tokenProvider.ErrSigningToken with the specific error
 		return "", fmt.Errorf("%w: %w", cred.ErrGeneratingToken, err)
@@ -99,10 +96,10 @@ func (js *JWTHandler) Validate(ctx context.Context, token string) (*cred.Claims,
 	claims := &JWTClaims{}
 
 	jwtToken, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
-		if token.Method != js.config.GetSigningMethod() {
+		if token.Method != jwt.GetSigningMethod(js.config.GetAlgorithm()) {
 			return nil, fmt.Errorf("%w: %v", cred.ErrInvalidSigningMethod, token.Method.Alg())
 		}
-		return []byte(js.config.GetSecretKey()), nil
+		return []byte(js.config.GetSecret()), nil
 	})
 
 	if err != nil {
@@ -128,12 +125,10 @@ func (js *JWTHandler) Validate(ctx context.Context, token string) (*cred.Claims,
 
 // ValidateToken validates a provided token string.
 func (js *JWTHandler) Invalidate(ctx context.Context, tokenString string) error {
-	// todo: black list the token
-	return nil
+	panic("implement me")
 }
 
 // ValidateToken validates a provided token string.
 func (js *JWTHandler) Refresh(ctx context.Context, tokenString string) (string, error) {
-	// todo: refresh the token
-	return "", nil
+	panic("implement me")
 }
