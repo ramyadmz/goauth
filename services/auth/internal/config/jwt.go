@@ -1,97 +1,89 @@
-// Package config provides functionalities to manage JWT configurations.
 package config
 
 import (
 	"errors"
 	"os"
 	"strconv"
+	"time"
+)
 
-	"github.com/golang-jwt/jwt"
+const (
+	DefaultAlgorithm    = "HS256"
+	DefaultHeaderName   = "Authorization"
+	DefaultHeaderPrefix = "Bearer"
 )
 
 // JWTConfig holds the JWT configurations.
 type JWTConfig struct {
-	secretKey       string
-	signingMethod   jwt.SigningMethod
-	accessTokenExp  int // Expiration time for access token in minutes
-	refreshTokenExp int // Expiration time for refresh token in minutes
-	issuer          string
+	secret                string
+	issuer                string
+	audience              string
+	algorithm             string
+	expirationTime        time.Duration
+	refreshExpirationTime time.Duration
+	headerName            string
+	headerPrefix          string
 }
 
-// JWTConfigBuilder helps in building a JWTConfig object.
-type JWTConfigBuilder struct {
-	config JWTConfig
-}
-
-// NewJWTConfigBuilder returns a new instance of JWTConfigBuilder.
-func NewJWTConfigBuilder() *JWTConfigBuilder {
-	return &JWTConfigBuilder{}
-}
-
-// FromEnv populates the JWTConfig object with values from environment variables.
-func (b *JWTConfigBuilder) FromEnv() *JWTConfigBuilder {
-	b.config.secretKey = os.Getenv("JWT_SECRET_KEY")
-	b.config.signingMethod = jwt.GetSigningMethod(os.Getenv("JWT_SIGNING_METHOD"))
-	b.config.accessTokenExp, _ = strconv.Atoi(os.Getenv("JWT_ACCESS_TOKEN_EXP"))
-	b.config.refreshTokenExp, _ = strconv.Atoi(os.Getenv("JWT_REFRESH_TOKEN_EXP"))
-	b.config.issuer = os.Getenv("JWT_ISSUER")
-	return b
-}
-
-// Validate checks if the JWTConfig object has valid fields.
-func (b *JWTConfigBuilder) Validate() error {
-	if b.config.signingMethod == nil {
-		return errors.New("SigningMethod is not valid")
+// NewJWTConfigBuilder returns a new instance of JWTConfigBuilder and
+// loads its values from environment variables or provides defaults.
+func NewJWTConfig() (*JWTConfig, error) {
+	config := &JWTConfig{
+		algorithm:    DefaultAlgorithm,
+		headerName:   DefaultHeaderName,
+		headerPrefix: DefaultHeaderPrefix,
 	}
 
-	if b.config.secretKey == "" {
-		return errors.New("secretKey must not be empty")
+	if algorithm := os.Getenv("OAUTH_JWT_ALGORITHM"); len(algorithm) > 0 {
+		config.algorithm = algorithm
 	}
 
-	if b.config.accessTokenExp == 0 {
-		return errors.New("AccessTokenExp must greater than zero")
+	if headerName := os.Getenv("OAUTH_JWT_HEADER_NAME"); len(headerName) > 0 {
+		config.headerName = headerName
 	}
 
-	if b.config.refreshTokenExp == 0 {
-		return errors.New("RefreshTokenExp must greater than zero")
+	if headerPrefix := os.Getenv("OAUTH_JWT_HEADER_PREFIX"); len(headerPrefix) > 0 {
+		config.headerPrefix = headerPrefix
 	}
 
-	if b.config.issuer == "" {
-		return errors.New("issuer must not be empty")
+	secret := os.Getenv("OAUTH_JWT_SECRET")
+	if len(secret) == 0 {
+		return nil, errors.New("OAUTH_JWT_SECRET environment variable is required")
 	}
+	config.secret = secret
 
-	return nil
-}
-
-// Build returns a fully built JWTConfig, if it is valid.
-func (b *JWTConfigBuilder) Build() (*JWTConfig, error) {
-	if err := b.Validate(); err != nil {
-		return nil, err
+	issuer := os.Getenv("OAUTH_JWT_ISSUER")
+	if len(issuer) == 0 {
+		return nil, errors.New("OAUTH_JWT_ISSUER environment variable is required")
 	}
-	return &b.config, nil
+	config.issuer = issuer
+
+	audience := os.Getenv("OAUTH_JWT_AUDIENCE")
+	if len(audience) == 0 {
+		return nil, errors.New("OAUTH_JWT_AUDIENCE environment variable is required")
+	}
+	config.audience = audience
+
+	expTime, err := strconv.Atoi(os.Getenv("OAUTH_JWT_EXPIRATION_TIME"))
+	if err != nil || expTime <= 0 {
+		return nil, errors.New("OAUTH_JWT_EXPIRATION_TIME environment variable is not valid")
+	}
+	config.expirationTime = time.Duration(expTime) * time.Minute
+
+	refreshExpTime, err := strconv.Atoi(os.Getenv("OAUTH_JWT_REFRESH_EXPIRATION_TIME"))
+	if err != nil || refreshExpTime <= 0 {
+		return nil, errors.New("OAUTH_JWT_REFRESH_EXPIRATION_TIME environment variable is not valid")
+	}
+	config.refreshExpirationTime = time.Duration(refreshExpTime) * time.Minute
+
+	return config, nil
 }
 
-// GetSecretKey returns the secret key from the JWTConfig.
-func (c *JWTConfig) GetSecretKey() string {
-	return c.secretKey
-}
-
-// GetSigningMethod returns the signing method from the JWTConfig.
-func (c *JWTConfig) GetSigningMethod() jwt.SigningMethod {
-	return c.signingMethod
-}
-
-// GetIssuer returns the issuer from the JWTConfig.
-func (c *JWTConfig) GetIssuer() string {
-	return c.issuer
-}
-
-// GetAccessTokenExp returns the access token expiration time from the JWTConfig.
-func (c *JWTConfig) GetAccessTokenExp() int {
-	return c.accessTokenExp
-}
-
-// GetRefreshTokenExp returns the refresh token expiration time from the JWTConfig.
-func (c *JWTConfig) GetRefreshTokenExp() int {
-	return c.refreshTokenExp
-}
+func (c JWTConfig) GetSecret() string                       { return c.secret }
+func (c JWTConfig) GetIssuer() string                       { return c.issuer }
+func (c JWTConfig) GetAudience() string                     { return c.audience }
+func (c JWTConfig) GetAlgorithm() string                    { return c.algorithm }
+func (c JWTConfig) GetExpirationTime() time.Duration        { return c.expirationTime }
+func (c JWTConfig) GetRefreshExpirationTime() time.Duration { return c.refreshExpirationTime }
+func (c JWTConfig) GetHeaderName() string                   { return c.headerName }
+func (c JWTConfig) GetHeaderPrefix() string                 { return c.headerPrefix }
