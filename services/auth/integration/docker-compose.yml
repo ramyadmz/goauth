@@ -4,18 +4,29 @@ services:
       context: ../  # Directory where the Dockerfile is
       dockerfile: Dockerfile  # The name of your Dockerfile
     depends_on:
-      auth-db:
+      oauth-db:
         condition: service_healthy
     environment:
-      AUTH_POSTGRES_HOST: auth-db
-      AUTH_POSTGRES_USER: postgres
-      AUTH_POSTGRES_PASSWORD: password
-      AUTH_POSTGRES_DB: auth
-      ACK_GINKGO_RC: true  # Add this line
+      - OAUTH_SERVICENAME=oauth-app
+      - OAUTH_ENVIRONMENT=test
+      - OAUTH_JWT_SECRET=secret_key 
+      - OAUTH_JWT_ISSUER=goauth 
+      - OAUTH_JWT_AUDIENCE=users  
+      - OAUTH_JWT_ALGORITHM=HS256  
+      - OAUTH_JWT_EXPIRATION_TIME=3600 
+      - OAUTH_JWT_REFRESH_EXPIRATION_TIME=604800  
+      - OAUTH_JWT_HEADER_PREFIX=Bearer  
+      - OAUTH_POSTGRESQL_HOST=oauth-db
+      - OAUTH_POSTGRESQL_PORT=5432
+      - OAUTH_POSTGRESQL_USERNAME=postgres
+      - OAUTH_POSTGRESQL_PASSWORD=password
+      - OAUTH_POSTGRESQL_DATABASE=oauthdb
+      - OAUTH_POSTGRESQL_SSL=disable
+      - ACK_GINKGO_RC=true  # Add this line
     working_dir: /app/integration
     command: ["make","test-with-migrations"]
 
-  auth-db:
+  oauth-db:
     image: postgres:13
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -27,5 +38,5 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: auth
+      POSTGRES_DB: oauthdb
     
