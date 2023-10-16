@@ -215,6 +215,7 @@ func (p *PostgresProvider) CreateAuthorization(ctx context.Context, params data.
 		UserID:    params.UserID,
 		Scope:     params.Scope,
 		ExpiresAt: time.Now().Add(10 * time.Minute),
+		IsRevoked: false,
 	}
 
 	_, err := p.db.Model(authorization).Insert(ctx)
@@ -233,7 +234,7 @@ func (p *PostgresProvider) GetAuthorizationCodeByAuthCode(ctx context.Context, a
 		AuthCode: authCode,
 	}
 
-	err := p.db.Model(authorization).Select(ctx)
+	err := p.db.Model(authorization).WherePK().Select(ctx)
 	if err != nil {
 		if err == pg.ErrNoRows {
 			logger.Warn("invalid auth code: %w", err)

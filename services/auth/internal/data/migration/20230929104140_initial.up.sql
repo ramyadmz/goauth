@@ -24,12 +24,12 @@ CREATE TABLE clients (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE authorization_codes (
+CREATE TABLE authorizations (
     auth_code VARCHAR(255) PRIMARY KEY,
     client_id INT REFERENCES clients(id),
     user_id INT REFERENCES users(id),
     scope VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP NOT NULL,
-    is_revoked BOOLEAN NOT NULL
+    is_revoked BOOLEAN DEFAULT FALSE
 );

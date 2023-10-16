@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-pg/pg/v11"
+	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/ramyadmz/goauth/internal/config"
@@ -15,17 +16,11 @@ import (
 	"github.com/ramyadmz/goauth/pkg/pb"
 )
 
-var (
-	Username = "testUsername"
-	Password = "testPassword"
-	Email    = "test1@test.com"
+var ClientID, UserID int64
+var ClientName, ClientSecret, Website, Scope, AuthCode, Token, RefreshToken string
+var Username, SessionID, Email, Password string
 
-	Website = "test.com"
-	Name    = "client"
-	Scope   = "admin"
-)
-
-var _ = Describe("CreateUser", func() {
+var _ = Describe("Oauth Test Suite", func() {
 	var (
 		ctx        context.Context
 		dal        *postgres.PostgresProvider
@@ -35,11 +30,6 @@ var _ = Describe("CreateUser", func() {
 
 	BeforeEach(func() {
 		ctx = context.Background()
-
-		// uncomment it for local test
-		//SetUpLocalTestEnvs()
-		//defer UnSetLocalTestEnvs()
-
 		jwtConfig, err := config.NewJWTConfig()
 		Expect(err).NotTo(HaveOccurred())
 		tokenHandler := jwt.NewJWTHandler(jwtConfig)
@@ -65,6 +55,7 @@ var _ = Describe("CreateUser", func() {
 
 	Context("when registering a new user", func() {
 		It("should successfully register and store the user", func() {
+			Username, Password, Email = uuid.NewString(), uuid.NewString(), uuid.NewString()
 			_, err := userAuth.RegisterUser(ctx, &pb.RegisterUserRequest{
 				Username: Username,
 				Password: Password,
@@ -75,6 +66,8 @@ var _ = Describe("CreateUser", func() {
 			By("checking the inserted user data in database")
 			user, err := dal.GetUserByUsername(ctx, Username)
 			Expect(err).To(BeNil(), "Expected to find the user in the database")
+			UserID = user.ID
+
 			Expect(user.Username).To(Equal(Username))
 			Expect(user.HashedPassword).ToNot(BeEmpty())
 			Expect(user.Email).To(Equal(Email))
@@ -82,21 +75,61 @@ var _ = Describe("CreateUser", func() {
 	})
 
 	Context("when registering a new client", func() {
+		ClientName, Website, Scope = uuid.NewString(), uuid.NewString(), "admin"
 		It("should successfully register and store the client", func() {
 			rsp, err := clientAuth.RegisterClient(ctx, &pb.RegisterClientRequest{
-				Name:    Name,
+				Name:    ClientName,
 				Website: Website,
 				Scope:   Scope,
 			})
 			Expect(err).To(BeNil(), "Expected no error during registration")
+			ClientID = rsp.ClientId
 
-			By("checking the inserted user data in database")
+			By("checking the inserted client data in database")
 			client, err := dal.GetClientByID(ctx, rsp.ClientId)
 			Expect(err).To(BeNil(), "Expected to find the user in the database")
-			Expect(client.Name).To(Equal(Name))
+			Expect(client.Name).To(Equal(ClientName))
 			Expect(client.Website).To(Equal(Website))
 			Expect(client.Scope).To(Equal(Scope))
 			Expect(client.HashedSecret).ToNot(BeEmpty())
 		})
+	})
+
+	Context("when loging in a user", func() {
+		It("should successfully login the user", func() {
+			rsp, err := userAuth.LoginUser(ctx, &pb.UserLoginRequest{
+				Username: Username,
+				Password: Password,
+			})
+			Expect(err).To(BeNil(), "Expected no error during registration")
+
+			By("checking the inserted user data in database")
+			session, err := dal.GetSessionByID(ctx, rsp.SessionId)
+			Expect(err).To(BeNil(), "Expected to find the session in the database")
+			SessionID = session.ID
+
+			user, err := dal.GetUserByID(ctx, session.UserID)
+			Expect(err).To(BeNil(), "Expected to find the user in the database")
+
+			Expect(session.UserID).To(Equal(user.ID))
+			Expect(user.Username).To(Equal(Username))
+		})
+	})
+
+	Context("when user consenting", func() {
+		It("should successfully consent", func() {
+			_, err := userAuth.ConsentUser(ctx, &pb.UserConsentRequest{
+				ClientId:  ClientID,
+				SessionId: SessionID,
+			})
+			Expect(err).To(BeNil(), "Expected no error during consent")
+
+			By("checking the inserted auth record in database")
+			auth, err := dal.GetAuthorizationCodeByUserIDAndClientID(ctx, UserID, ClientID)
+			Expect(err).To(BeNil(), "Expected to find the session in the database")
+
+			Expect(auth.AuthCode).NotTo(Equal(""))
+		})
+
 	})
 })
