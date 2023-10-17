@@ -53,19 +53,22 @@ var _ = Describe("Oauth Test Suite", func() {
 		clientAuth = auth.NewClientAuthService(dal, tokenHandler)
 	})
 
-	Context("when registering a new user", func() {
-		It("should successfully register and store the user", func() {
+	Context("User Registration", func() {
+		It("registers and stores a new user successfully", func() {
+			// Generate random credentials
 			Username, Password, Email = uuid.NewString(), uuid.NewString(), uuid.NewString()
+
+			// Attempt to register the user
 			_, err := userAuth.RegisterUser(ctx, &pb.RegisterUserRequest{
 				Username: Username,
 				Password: Password,
 				Email:    Email,
 			})
-			Expect(err).To(BeNil(), "Expected no error during registration")
+			Expect(err).To(BeNil(), "User registration should complete without errors")
 
-			By("checking the inserted user data in database")
+			By("Validating the stored user data in the database")
 			user, err := dal.GetUserByUsername(ctx, Username)
-			Expect(err).To(BeNil(), "Expected to find the user in the database")
+			Expect(err).To(BeNil(), "The user should exist in the database after successful registration")
 			UserID = user.ID
 
 			Expect(user.Username).To(Equal(Username))
@@ -74,18 +77,20 @@ var _ = Describe("Oauth Test Suite", func() {
 		})
 	})
 
-	Context("when registering a new client", func() {
-		ClientName, Website, Scope = uuid.NewString(), uuid.NewString(), "admin"
-		It("should successfully register and store the client", func() {
+	Context("Client Registration", func() {
+		It("registers and stores a new client successfully", func() {
+			ClientName, Website, Scope = uuid.NewString(), uuid.NewString(), "admin"
+
 			rsp, err := clientAuth.RegisterClient(ctx, &pb.RegisterClientRequest{
 				Name:    ClientName,
 				Website: Website,
 				Scope:   Scope,
 			})
-			Expect(err).To(BeNil(), "Expected no error during registration")
+			Expect(err).To(BeNil(), "Client registration should complete without errors")
 			ClientID = rsp.ClientId
+			ClientSecret = rsp.ClientSecret
 
-			By("checking the inserted client data in database")
+			By("Validating the stored client data in the database")
 			client, err := dal.GetClientByID(ctx, rsp.ClientId)
 			Expect(err).To(BeNil(), "Expected to find the user in the database")
 			Expect(client.Name).To(Equal(ClientName))
@@ -95,15 +100,15 @@ var _ = Describe("Oauth Test Suite", func() {
 		})
 	})
 
-	Context("when loging in a user", func() {
-		It("should successfully login the user", func() {
+	Context("User Login", func() {
+		It("logs in a user successfully", func() {
 			rsp, err := userAuth.LoginUser(ctx, &pb.UserLoginRequest{
 				Username: Username,
 				Password: Password,
 			})
-			Expect(err).To(BeNil(), "Expected no error during registration")
+			Expect(err).To(BeNil(), "User login should complete without errors")
 
-			By("checking the inserted user data in database")
+			By("Validating the stored authorization record in the database")
 			session, err := dal.GetSessionByID(ctx, rsp.SessionId)
 			Expect(err).To(BeNil(), "Expected to find the session in the database")
 			SessionID = session.ID
@@ -116,20 +121,63 @@ var _ = Describe("Oauth Test Suite", func() {
 		})
 	})
 
-	Context("when user consenting", func() {
-		It("should successfully consent", func() {
+	Context("User Consent", func() {
+		It("completes user consent successfully", func() {
 			_, err := userAuth.ConsentUser(ctx, &pb.UserConsentRequest{
 				ClientId:  ClientID,
 				SessionId: SessionID,
 			})
-			Expect(err).To(BeNil(), "Expected no error during consent")
+			Expect(err).To(BeNil(), "User consent should complete without errors")
 
-			By("checking the inserted auth record in database")
+			By("Validating the stored authorization record in the database")
 			auth, err := dal.GetAuthorizationCodeByUserIDAndClientID(ctx, UserID, ClientID)
-			Expect(err).To(BeNil(), "Expected to find the session in the database")
+			Expect(err).To(BeNil(), "Expected to find the auth code by user id and client id in the database")
 
 			Expect(auth.AuthCode).NotTo(Equal(""))
 		})
 
+	})
+
+	Context("Authorization Code Retrieval", func() {
+		It("retrieves an authorization code successfully", func() {
+			rsp, err := clientAuth.GetAuthorizationCode(ctx, &pb.GetAuthorizationCodeRequest{
+				ClientId:     ClientID,
+				ClientSecret: ClientSecret,
+				Username:     Username,
+			})
+			Expect(err).To(BeNil(), "Authorization code retrieval should complete without errors")
+
+			By("Validating the returned authorization record")
+			auth, err := dal.GetAuthorizationCodeByUserIDAndClientID(ctx, UserID, ClientID)
+			Expect(err).To(BeNil(), "Expected to find the auth code by user id and client id in the database")
+
+			Expect(auth.AuthCode).To(Equal(rsp.AuthorizationCode))
+			AuthCode = rsp.AuthorizationCode
+		})
+	})
+
+	Context("Token Exchange", func() {
+		It("exchanges an authorization code for tokens successfully", func() {
+			rsp, err := clientAuth.ExchangeToken(ctx, &pb.ExchangeTokenRequest{
+				ClientId:          ClientID,
+				ClientSecret:      ClientSecret,
+				AuthorizationCode: AuthCode,
+			})
+			Expect(err).To(BeNil(), "Token exchange should complete without errors")
+			Expect(len(rsp.AccessToken)).NotTo(Equal(0))
+			Expect(len(rsp.RefreshToken)).ToNot(Equal(0))
+			Token = rsp.AccessToken
+			RefreshToken = rsp.RefreshToken
+		})
+	})
+
+	Context("Token Refresh", func() {
+		It("refreshes an access token successfully", func() {
+			rsp, err := clientAuth.RefreshToken(ctx, &pb.RefreshTokenRequest{
+				RefreshToken: RefreshToken,
+			})
+			Expect(err).To(BeNil(), "Token refresh should complete without errors")
+			Expect(len(rsp.AccessToken)).NotTo(Equal(0))
+		})
 	})
 })
