@@ -9,10 +9,12 @@ import (
 	"github.com/go-playground/assert/v2"
 	"github.com/google/uuid"
 	"github.com/ramyadmz/goauth/internal/data"
-	"github.com/ramyadmz/goauth/internal/service/auth"
+	mock "github.com/ramyadmz/goauth/internal/data/mock"
+
 	"github.com/ramyadmz/goauth/internal/service/credentials"
 	"github.com/ramyadmz/goauth/pkg/pb"
-	"github.com/stretchr/testify/mock"
+	mocks "github.com/stretchr/testify/mock"
+
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -29,10 +31,10 @@ func TestRegisterClient_HappyPath(t *testing.T) {
 		UpdatedAt:    time.Now(),
 	}
 
-	mockDAL := &MockDAL{}
-	mockDAL.On("CreateClient", mock.Anything, mock.Anything).Return(client, nil)
+	mockDAL := &mock.DataProvider{}
+	mockDAL.On("CreateClient", mocks.Anything, mocks.Anything).Return(client, nil)
 
-	authService := auth.NewClientAuthService(mockDAL, &MockTokenHandler{})
+	authService := NewClientAuthService(mockDAL, &mock.TokenHandler{})
 
 	rsp, err := authService.RegisterClient(context.Background(), &pb.RegisterClientRequest{Name: client.Name, Website: client.Website, Scope: client.Scope})
 
@@ -44,10 +46,10 @@ func TestRegisterClient_HappyPath(t *testing.T) {
 func TestRegisterClient_InternalError(t *testing.T) {
 	client := &data.Client{}
 
-	mockDAL := &MockDAL{}
-	mockDAL.On("CreateClient", mock.Anything, mock.Anything).Return(client, errors.New("failed to create client"))
+	mockDAL := &mock.DataProvider{}
+	mockDAL.On("CreateClient", mocks.Anything, mocks.Anything).Return(client, errors.New("failed to create client"))
 
-	authService := auth.NewClientAuthService(mockDAL, &MockTokenHandler{})
+	authService := NewClientAuthService(mockDAL, &mock.TokenHandler{})
 
 	rsp, err := authService.RegisterClient(context.Background(), &pb.RegisterClientRequest{Name: client.Name, Website: client.Website, Scope: client.Scope})
 	assert.NotEqual(t, err, nil)
@@ -84,12 +86,12 @@ func TestGetAuthorizationCode_HappyPath(t *testing.T) {
 		IsRevoked: false,
 	}
 
-	mockDAL := &MockDAL{}
-	mockDAL.On("GetClientByID", mock.Anything, mock.Anything).Return(client, nil)
-	mockDAL.On("GetUserByUsername", mock.Anything, mock.Anything).Return(user, nil)
-	mockDAL.On("GetAuthorizationCodeByUserIDAndClientID", mock.Anything, mock.Anything, mock.Anything).Return(authorization, nil)
+	mockDAL := &mock.DataProvider{}
+	mockDAL.On("GetClientByID", mocks.Anything, mocks.Anything).Return(client, nil)
+	mockDAL.On("GetUserByUsername", mocks.Anything, mocks.Anything).Return(user, nil)
+	mockDAL.On("GetAuthorizationCodeByUserIDAndClientID", mocks.Anything, mocks.Anything, mocks.Anything).Return(authorization, nil)
 
-	authService := auth.NewClientAuthService(mockDAL, &MockTokenHandler{})
+	authService := NewClientAuthService(mockDAL, &mock.TokenHandler{})
 	rsp, err := authService.GetAuthorizationCode(context.Background(), &pb.GetAuthorizationCodeRequest{
 		ClientId:     client.ID,
 		Username:     user.Username,
@@ -113,13 +115,13 @@ func TestGetAuthorizationCode_Unauthenticated(t *testing.T) {
 		UpdatedAt:    time.Now(),
 	}
 
-	mockDAL := &MockDAL{}
-	mockDAL.On("GetClientByID", mock.Anything, mock.Anything).Return(client, nil)
+	mockDAL := &mock.DataProvider{}
+	mockDAL.On("GetClientByID", mocks.Anything, mocks.Anything).Return(client, nil)
 
-	authService := auth.NewClientAuthService(mockDAL, &MockTokenHandler{})
+	authService := NewClientAuthService(mockDAL, &mock.TokenHandler{})
 	_, err := authService.GetAuthorizationCode(context.Background(), &pb.GetAuthorizationCodeRequest{
 		ClientId:     client.ID,
-		Username:     mock.Anything,
+		Username:     mocks.Anything,
 		ClientSecret: invalidclientSecret,
 	})
 	assert.Equal(t, status.Code(err), codes.Unauthenticated)
@@ -149,15 +151,15 @@ func TestExchangeToken_HappyPath(t *testing.T) {
 		IsRevoked: false,
 	}
 
-	mockDAL := &MockDAL{}
-	mockDAL.On("GetClientByID", mock.Anything, mock.Anything).Return(client, nil)
-	mockDAL.On("GetAuthorizationCodeByAuthCode", mock.Anything, mock.Anything, mock.Anything).Return(authorization, nil)
+	mockDAL := &mock.DataProvider{}
+	mockDAL.On("GetClientByID", mocks.Anything, mocks.Anything).Return(client, nil)
+	mockDAL.On("GetAuthorizationCodeByAuthCode", mocks.Anything, mocks.Anything, mocks.Anything).Return(authorization, nil)
 
-	mockTokenHandler := &MockTokenHandler{}
-	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Times(1).Return(accessToken, nil)
-	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Times(2).Return(refreshToken, nil)
+	mockTokenHandler := &mock.TokenHandler{}
+	mockTokenHandler.On("Generate", mocks.Anything, mocks.Anything).Times(1).Return(accessToken, nil)
+	mockTokenHandler.On("Generate", mocks.Anything, mocks.Anything).Times(2).Return(refreshToken, nil)
 
-	authService := auth.NewClientAuthService(mockDAL, mockTokenHandler)
+	authService := NewClientAuthService(mockDAL, mockTokenHandler)
 	rsp, err := authService.ExchangeToken(context.Background(), &pb.ExchangeTokenRequest{
 		ClientId:          client.ID,
 		ClientSecret:      clientSecret,
@@ -194,15 +196,15 @@ func TestExchangeToken_Unauthenticated(t *testing.T) {
 		IsRevoked: false,
 	}
 
-	mockDAL := &MockDAL{}
-	mockDAL.On("GetClientByID", mock.Anything, mock.Anything).Return(client, nil)
-	mockDAL.On("GetAuthorizationCodeByAuthCode", mock.Anything, mock.Anything, mock.Anything).Return(authorization, nil)
+	mockDAL := &mock.DataProvider{}
+	mockDAL.On("GetClientByID", mocks.Anything, mocks.Anything).Return(client, nil)
+	mockDAL.On("GetAuthorizationCodeByAuthCode", mocks.Anything, mocks.Anything, mocks.Anything).Return(authorization, nil)
 
-	mockTokenHandler := &MockTokenHandler{}
-	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Times(1).Return(accessToken, nil)
-	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Times(2).Return(refreshToken, nil)
+	mockTokenHandler := &mock.TokenHandler{}
+	mockTokenHandler.On("Generate", mocks.Anything, mocks.Anything).Times(1).Return(accessToken, nil)
+	mockTokenHandler.On("Generate", mocks.Anything, mocks.Anything).Times(2).Return(refreshToken, nil)
 
-	authService := auth.NewClientAuthService(mockDAL, mockTokenHandler)
+	authService := NewClientAuthService(mockDAL, mockTokenHandler)
 	_, err := authService.ExchangeToken(context.Background(), &pb.ExchangeTokenRequest{
 		ClientId:          client.ID,
 		ClientSecret:      clientSecret,
@@ -216,13 +218,13 @@ func TestExchangeToken_Unauthenticated(t *testing.T) {
 func TestRefreshToken_HappyPath(t *testing.T) {
 	accessToken := "accessToken"
 
-	mockTokenHandler := &MockTokenHandler{}
-	mockTokenHandler.On("Validate", mock.Anything, mock.Anything).Return(&credentials.Claims{}, nil)
-	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Return(accessToken, nil)
+	mockTokenHandler := &mock.TokenHandler{}
+	mockTokenHandler.On("Validate", mocks.Anything, mocks.Anything).Return(&credentials.Claims{}, nil)
+	mockTokenHandler.On("Generate", mocks.Anything, mocks.Anything).Return(accessToken, nil)
 
-	authService := auth.NewClientAuthService(&MockDAL{}, mockTokenHandler)
+	authService := NewClientAuthService(&mock.DataProvider{}, mockTokenHandler)
 	rsp, err := authService.RefreshToken(context.Background(), &pb.RefreshTokenRequest{
-		RefreshToken: mock.Anything,
+		RefreshToken: mocks.Anything,
 	})
 
 	assert.Equal(t, err, nil)
@@ -231,12 +233,12 @@ func TestRefreshToken_HappyPath(t *testing.T) {
 
 func TestRefreshToken_Unauthenticated(t *testing.T) {
 
-	mockTokenHandler := &MockTokenHandler{}
-	mockTokenHandler.On("Validate", mock.Anything, mock.Anything).Return(&credentials.Claims{}, credentials.ErrInvalidToken)
+	mockTokenHandler := &mock.TokenHandler{}
+	mockTokenHandler.On("Validate", mocks.Anything, mocks.Anything).Return(&credentials.Claims{}, credentials.ErrInvalidToken)
 
-	authService := auth.NewClientAuthService(&MockDAL{}, mockTokenHandler)
+	authService := NewClientAuthService(&mock.DataProvider{}, mockTokenHandler)
 	_, err := authService.RefreshToken(context.Background(), &pb.RefreshTokenRequest{
-		RefreshToken: mock.Anything,
+		RefreshToken: mocks.Anything,
 	})
 
 	assert.Equal(t, status.Code(err), codes.Unauthenticated)

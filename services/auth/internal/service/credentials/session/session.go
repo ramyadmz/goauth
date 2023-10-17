@@ -12,10 +12,10 @@ import (
 var _ credentials.TokenHandler = new(SessionHandler)
 
 type SessionHandler struct {
-	dal data.AuthProvider
+	dal data.DataProvider
 }
 
-func NewSessionHandler(dal data.AuthProvider) *SessionHandler {
+func NewSessionHandler(dal data.DataProvider) *SessionHandler {
 	return &SessionHandler{dal: dal}
 }
 

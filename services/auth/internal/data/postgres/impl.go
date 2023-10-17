@@ -24,22 +24,22 @@ import (
 // }
 // p.db.AddQueryHook(dbLogger{})
 
-// PostgresProvider implements the AuthProvider interface using PostgreSQL as a backend.
-type PostgresProvider struct {
+// DataProvider implements the AuthProvider interface using PostgreSQL as a backend.
+type DataProvider struct {
 	db *pg.DB
 }
 
-// Compile-time check to ensure PostgresProvider satisfies the data.AuthProvider interface.
-var _ data.AuthProvider = new(PostgresProvider)
+// Compile-time check to ensure DataProvider satisfies the data.AuthProvider interface.
+var _ data.DataProvider = new(DataProvider)
 
-func NewPostgresProvider(db *pg.DB) *PostgresProvider {
-	return &PostgresProvider{
+func NewDataProvider(db *pg.DB) *DataProvider {
+	return &DataProvider{
 		db: db,
 	}
 }
 
 // CreateUser creates a new user in the database.
-func (p *PostgresProvider) CreateUser(ctx context.Context, params data.CreateUserParams) (*data.User, error) {
+func (p *DataProvider) CreateUser(ctx context.Context, params data.CreateUserParams) (*data.User, error) {
 	logger := logrus.WithContext(ctx).WithField("username", params.Username).WithField("email", params.Email)
 	user := &User{
 		Username:       params.Username,
@@ -58,7 +58,7 @@ func (p *PostgresProvider) CreateUser(ctx context.Context, params data.CreateUse
 }
 
 // GetUserByID retrieves a user by their ID from the database.
-func (p *PostgresProvider) GetUserByID(ctx context.Context, userID int64) (*data.User, error) {
+func (p *DataProvider) GetUserByID(ctx context.Context, userID int64) (*data.User, error) {
 	logger := logrus.WithContext(ctx).WithField("userID", userID)
 	user := &User{ID: userID}
 
@@ -76,7 +76,7 @@ func (p *PostgresProvider) GetUserByID(ctx context.Context, userID int64) (*data
 	return user.ToData(), nil
 }
 
-func (p *PostgresProvider) GetUserByUsername(ctx context.Context, username string) (*data.User, error) {
+func (p *DataProvider) GetUserByUsername(ctx context.Context, username string) (*data.User, error) {
 	logger := logrus.WithContext(ctx).WithField("username", username)
 	user := &User{}
 
@@ -95,7 +95,7 @@ func (p *PostgresProvider) GetUserByUsername(ctx context.Context, username strin
 }
 
 // CreateSession creates a new session in the database.
-func (p *PostgresProvider) CreateSession(ctx context.Context, params data.CreateSessionParams) (*data.Session, error) {
+func (p *DataProvider) CreateSession(ctx context.Context, params data.CreateSessionParams) (*data.Session, error) {
 	logger := logrus.WithContext(ctx).WithField("userID", params.UserID)
 	session := &Session{
 		ID:        uuid.NewString(),
@@ -114,7 +114,7 @@ func (p *PostgresProvider) CreateSession(ctx context.Context, params data.Create
 }
 
 // GetSessionByID retrieves a session by ID from the database.
-func (p *PostgresProvider) GetSessionByID(ctx context.Context, sessionID string) (*data.Session, error) {
+func (p *DataProvider) GetSessionByID(ctx context.Context, sessionID string) (*data.Session, error) {
 	logger := logrus.WithContext(ctx).WithField("sessionID", sessionID)
 	session := &Session{
 		ID: sessionID,
@@ -134,7 +134,7 @@ func (p *PostgresProvider) GetSessionByID(ctx context.Context, sessionID string)
 	return session.ToData(), nil
 }
 
-func (p *PostgresProvider) DeleteSessionByID(ctx context.Context, sessionID string) error {
+func (p *DataProvider) DeleteSessionByID(ctx context.Context, sessionID string) error {
 	logger := logrus.WithContext(ctx).WithField("sessionID", sessionID)
 	session := &Session{ID: sessionID}
 
@@ -148,7 +148,7 @@ func (p *PostgresProvider) DeleteSessionByID(ctx context.Context, sessionID stri
 	return nil
 }
 
-func (p *PostgresProvider) UpdateSession(ctx context.Context, params data.UpdateSessionParams) (*data.Session, error) {
+func (p *DataProvider) UpdateSession(ctx context.Context, params data.UpdateSessionParams) (*data.Session, error) {
 	logger := logrus.WithContext(ctx).WithField("sessionID", params.SessionID).WithField("expireDate", params.ExpiresAt)
 	session := &Session{
 		ID:        params.SessionID,
@@ -165,7 +165,7 @@ func (p *PostgresProvider) UpdateSession(ctx context.Context, params data.Update
 	return session.ToData(), nil
 }
 
-func (p *PostgresProvider) CreateClient(ctx context.Context, params data.CreateClientParams) (*data.Client, error) {
+func (p *DataProvider) CreateClient(ctx context.Context, params data.CreateClientParams) (*data.Client, error) {
 	logger := logrus.WithContext(ctx).WithField("clientName", params.Name).WithField("scope", params.Scope)
 
 	client := &Client{
@@ -187,7 +187,7 @@ func (p *PostgresProvider) CreateClient(ctx context.Context, params data.CreateC
 	return client.ToData(), nil
 }
 
-func (p *PostgresProvider) GetClientByID(ctx context.Context, clientID int64) (*data.Client, error) {
+func (p *DataProvider) GetClientByID(ctx context.Context, clientID int64) (*data.Client, error) {
 	logger := logrus.WithContext(ctx).WithField("clientID", clientID)
 	client := &Client{
 		ID: clientID,
@@ -207,7 +207,7 @@ func (p *PostgresProvider) GetClientByID(ctx context.Context, clientID int64) (*
 	return client.ToData(), nil
 }
 
-func (p *PostgresProvider) CreateAuthorization(ctx context.Context, params data.CreateAuthorizationParams) (*data.Authorization, error) {
+func (p *DataProvider) CreateAuthorization(ctx context.Context, params data.CreateAuthorizationParams) (*data.Authorization, error) {
 	logger := logrus.WithContext(ctx).WithField("clientID", params.ClientID).WithField("userID", params.UserID).WithField("scope", params.Scope)
 	authorization := &Authorization{
 		AuthCode:  uuid.NewString(),
@@ -228,7 +228,7 @@ func (p *PostgresProvider) CreateAuthorization(ctx context.Context, params data.
 	return authorization.ToData(), nil
 }
 
-func (p *PostgresProvider) GetAuthorizationCodeByAuthCode(ctx context.Context, authCode string) (*data.Authorization, error) {
+func (p *DataProvider) GetAuthorizationCodeByAuthCode(ctx context.Context, authCode string) (*data.Authorization, error) {
 	logger := logrus.WithContext(ctx)
 	authorization := &Authorization{
 		AuthCode: authCode,
@@ -248,7 +248,7 @@ func (p *PostgresProvider) GetAuthorizationCodeByAuthCode(ctx context.Context, a
 	return authorization.ToData(), nil
 }
 
-func (p *PostgresProvider) GetAuthorizationCodeByUserIDAndClientID(ctx context.Context, userID, clientID int64) (*data.Authorization, error) {
+func (p *DataProvider) GetAuthorizationCodeByUserIDAndClientID(ctx context.Context, userID, clientID int64) (*data.Authorization, error) {
 	logger := logrus.WithContext(ctx).WithField("userID", userID).WithField("clientID", clientID)
 	authorization := &Authorization{}
 
@@ -266,7 +266,7 @@ func (p *PostgresProvider) GetAuthorizationCodeByUserIDAndClientID(ctx context.C
 	return authorization.ToData(), nil
 }
 
-func (p *PostgresProvider) RevokeAuthorizationByUserID(ctx context.Context, userID int64) error {
+func (p *DataProvider) RevokeAuthorizationByUserID(ctx context.Context, userID int64) error {
 	logger := logrus.WithContext(ctx).WithField("userID", userID)
 
 	_, err := p.db.Model(&Authorization{}).

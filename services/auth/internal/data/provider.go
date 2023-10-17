@@ -43,7 +43,7 @@ type UpdateSessionParams struct {
 	ExpiresAt time.Time
 }
 
-type AuthProvider interface {
+type DataProvider interface {
 	CreateUser(ctx context.Context, params CreateUserParams) (*User, error)
 	GetUserByID(ctx context.Context, userID int64) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)

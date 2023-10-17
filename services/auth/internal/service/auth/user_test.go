@@ -9,10 +9,10 @@ import (
 
 	"github.com/go-playground/assert/v2"
 	"github.com/ramyadmz/goauth/internal/data"
-	"github.com/ramyadmz/goauth/internal/service/auth"
+	"github.com/ramyadmz/goauth/internal/data/mock"
 	"github.com/ramyadmz/goauth/internal/service/credentials"
 	"github.com/ramyadmz/goauth/pkg/pb"
-	"github.com/stretchr/testify/mock"
+	mocks "github.com/stretchr/testify/mock"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -31,10 +31,10 @@ func TestRegisterUser_HappyPath(t *testing.T) {
 		UpdatedAt:      time.Now(),
 	}
 
-	mockDAL := &MockDAL{}
-	mockDAL.On("CreateUser", mock.Anything, mock.Anything).Return(user, nil)
+	mockDAL := &mock.DataProvider{}
+	mockDAL.On("CreateUser", mocks.Anything, mocks.Anything).Return(user, nil)
 
-	authService := auth.NewUserAuthService(mockDAL, &MockTokenHandler{})
+	authService := NewUserAuthService(mockDAL, &mock.TokenHandler{})
 
 	_, err := authService.RegisterUser(context.Background(), &pb.RegisterUserRequest{
 		Username: user.Username,
@@ -46,15 +46,15 @@ func TestRegisterUser_HappyPath(t *testing.T) {
 }
 
 func TestRegisterUser_InternalError(t *testing.T) {
-	mockDAL := &MockDAL{}
-	mockDAL.On("CreateUser", mock.Anything, mock.Anything).Return(&data.User{}, errors.New("Error creating user in database"))
+	mockDAL := &mock.DataProvider{}
+	mockDAL.On("CreateUser", mocks.Anything, mocks.Anything).Return(&data.User{}, errors.New("Error creating user in database"))
 
-	authService := auth.NewUserAuthService(mockDAL, &MockTokenHandler{})
+	authService := NewUserAuthService(mockDAL, &mock.TokenHandler{})
 
 	_, err := authService.RegisterUser(context.Background(), &pb.RegisterUserRequest{
-		Username: mock.Anything,
-		Password: mock.Anything,
-		Email:    mock.Anything,
+		Username: mocks.Anything,
+		Password: mocks.Anything,
+		Email:    mocks.Anything,
 	})
 
 	assert.Equal(t, status.Code(err), codes.Internal)
@@ -74,13 +74,13 @@ func TestLoginUser_HappyPath(t *testing.T) {
 		UpdatedAt:      time.Now(),
 	}
 
-	mockDAL := &MockDAL{}
-	mockDAL.On("GetUserByUsername", mock.Anything, mock.Anything).Return(user, nil)
+	mockDAL := &mock.DataProvider{}
+	mockDAL.On("GetUserByUsername", mocks.Anything, mocks.Anything).Return(user, nil)
 
-	mockSessionHandler := &MockTokenHandler{}
-	mockSessionHandler.On("Generate", mock.Anything, mock.Anything).Return(sessionID, nil)
+	mockSessionHandler := &mock.TokenHandler{}
+	mockSessionHandler.On("Generate", mocks.Anything, mocks.Anything).Return(sessionID, nil)
 
-	authService := auth.NewUserAuthService(mockDAL, mockSessionHandler)
+	authService := NewUserAuthService(mockDAL, mockSessionHandler)
 
 	rsp, err := authService.LoginUser(context.Background(), &pb.UserLoginRequest{
 		Username: user.Username,
@@ -105,10 +105,10 @@ func TestLoginUser_Unauthenticated(t *testing.T) {
 		UpdatedAt:      time.Now(),
 	}
 
-	mockDAL := &MockDAL{}
-	mockDAL.On("GetUserByUsername", mock.Anything, mock.Anything).Return(user, nil)
+	mockDAL := &mock.DataProvider{}
+	mockDAL.On("GetUserByUsername", mocks.Anything, mocks.Anything).Return(user, nil)
 
-	authService := auth.NewUserAuthService(mockDAL, &MockTokenHandler{})
+	authService := NewUserAuthService(mockDAL, &mock.TokenHandler{})
 
 	_, err := authService.LoginUser(context.Background(), &pb.UserLoginRequest{
 		Username: user.Username,
@@ -119,26 +119,26 @@ func TestLoginUser_Unauthenticated(t *testing.T) {
 }
 
 func TestLogoutUser_HappyPath(t *testing.T) {
-	mockSessionHandler := &MockTokenHandler{}
-	mockSessionHandler.On("Invalidate", mock.Anything, mock.Anything).Return(nil)
+	mockSessionHandler := &mock.TokenHandler{}
+	mockSessionHandler.On("Invalidate", mocks.Anything, mocks.Anything).Return(nil)
 
-	authService := auth.NewUserAuthService(&MockDAL{}, mockSessionHandler)
+	authService := NewUserAuthService(&mock.DataProvider{}, mockSessionHandler)
 
 	_, err := authService.LogoutUser(context.Background(), &pb.UserLogoutRequest{
-		SessionId: mock.Anything,
+		SessionId: mocks.Anything,
 	})
 
 	assert.Equal(t, err, nil)
 }
 
 func TestLogoutUser_Unauthenticated(t *testing.T) {
-	mockSessionHandler := &MockTokenHandler{}
-	mockSessionHandler.On("Invalidate", mock.Anything, mock.Anything).Return(credentials.ErrInvalidToken)
+	mockSessionHandler := &mock.TokenHandler{}
+	mockSessionHandler.On("Invalidate", mocks.Anything, mocks.Anything).Return(credentials.ErrInvalidToken)
 
-	authService := auth.NewUserAuthService(&MockDAL{}, mockSessionHandler)
+	authService := NewUserAuthService(&mock.DataProvider{}, mockSessionHandler)
 
 	_, err := authService.LogoutUser(context.Background(), &pb.UserLogoutRequest{
-		SessionId: mock.Anything,
+		SessionId: mocks.Anything,
 	})
 
 	assert.Equal(t, status.Code(err), codes.Unauthenticated)
@@ -158,14 +158,14 @@ func TestConsentUser_HappyPath(t *testing.T) {
 		UpdatedAt:    time.Now(),
 	}
 
-	mockDAL := &MockDAL{}
-	mockDAL.On("GetClientByID", mock.Anything, mock.Anything).Return(client, nil)
-	mockDAL.On("CreateAuthorization", mock.Anything, mock.Anything, mock.Anything).Return(&data.Authorization{}, nil)
+	mockDAL := &mock.DataProvider{}
+	mockDAL.On("GetClientByID", mocks.Anything, mocks.Anything).Return(client, nil)
+	mockDAL.On("CreateAuthorization", mocks.Anything, mocks.Anything, mocks.Anything).Return(&data.Authorization{}, nil)
 
-	mockTokenHandler := &MockTokenHandler{}
-	mockTokenHandler.On("Validate", mock.Anything, mock.Anything).Return(&credentials.Claims{}, nil)
+	mockTokenHandler := &mock.TokenHandler{}
+	mockTokenHandler.On("Validate", mocks.Anything, mocks.Anything).Return(&credentials.Claims{}, nil)
 
-	authService := auth.NewUserAuthService(mockDAL, mockTokenHandler)
+	authService := NewUserAuthService(mockDAL, mockTokenHandler)
 	_, err := authService.ConsentUser(context.Background(), &pb.UserConsentRequest{
 		ClientId:  client.ID,
 		SessionId: sessionID,
@@ -176,13 +176,13 @@ func TestConsentUser_HappyPath(t *testing.T) {
 
 func TestConsentUser_Unauthenticated(t *testing.T) {
 
-	mockTokenHandler := &MockTokenHandler{}
-	mockTokenHandler.On("Validate", mock.Anything, mock.Anything).Return(&credentials.Claims{}, credentials.ErrInvalidToken)
+	mockTokenHandler := &mock.TokenHandler{}
+	mockTokenHandler.On("Validate", mocks.Anything, mocks.Anything).Return(&credentials.Claims{}, credentials.ErrInvalidToken)
 
-	authService := auth.NewUserAuthService(&MockDAL{}, mockTokenHandler)
+	authService := NewUserAuthService(&mock.DataProvider{}, mockTokenHandler)
 	_, err := authService.ConsentUser(context.Background(), &pb.UserConsentRequest{
 		ClientId:  rand.Int63(),
-		SessionId: mock.Anything,
+		SessionId: mocks.Anything,
 	})
 
 	assert.Equal(t, status.Code(err), codes.Unauthenticated)

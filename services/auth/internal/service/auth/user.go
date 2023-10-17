@@ -22,12 +22,12 @@ const (
 
 type UserAuthService struct {
 	pb.UnimplementedOAuthServiceServer
-	dal            data.AuthProvider
+	dal            data.DataProvider
 	sessionHandler credentials.TokenHandler
 }
 
 // NewUserAuthService creates a new instance of ClientAuthService with the provided dependencies.
-func NewUserAuthService(dal data.AuthProvider, sessionHandler credentials.TokenHandler) *UserAuthService {
+func NewUserAuthService(dal data.DataProvider, sessionHandler credentials.TokenHandler) *UserAuthService {
 	return &UserAuthService{
 		dal:            dal,
 		sessionHandler: sessionHandler,

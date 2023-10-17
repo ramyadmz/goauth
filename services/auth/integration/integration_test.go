@@ -23,7 +23,7 @@ var Username, SessionID, Email, Password string
 var _ = Describe("Oauth Test Suite", func() {
 	var (
 		ctx        context.Context
-		dal        *postgres.PostgresProvider
+		dal        *postgres.DataProvider
 		userAuth   *auth.UserAuthService
 		clientAuth *auth.ClientAuthService
 	)
@@ -45,7 +45,7 @@ var _ = Describe("Oauth Test Suite", func() {
 		}
 
 		db := pg.Connect(options)
-		dal = postgres.NewPostgresProvider(db)
+		dal = postgres.NewDataProvider(db)
 		sessionHandler := session.NewSessionHandler(dal)
 
 		// reuse dal to avoid unnecessary overhead in opening and closing multiple database connections.
