@@ -8,11 +8,11 @@ import (
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/ramyadmz/goauth/internal/auth"
 	"github.com/ramyadmz/goauth/internal/config"
+	"github.com/ramyadmz/goauth/internal/credentials/jwt"
+	"github.com/ramyadmz/goauth/internal/credentials/session"
 	"github.com/ramyadmz/goauth/internal/data/postgres"
-	"github.com/ramyadmz/goauth/internal/service/auth"
-	"github.com/ramyadmz/goauth/internal/service/credentials/jwt"
-	"github.com/ramyadmz/goauth/internal/service/credentials/session"
 	"github.com/ramyadmz/goauth/pkg/pb"
 )
 
@@ -46,7 +46,7 @@ var _ = Describe("Oauth Test Suite", func() {
 
 		db := pg.Connect(options)
 		dal = postgres.NewDataProvider(db)
-		sessionHandler := session.NewSessionHandler(dal)
+		sessionHandler := session.NewSessionManager(dal)
 
 		// reuse dal to avoid unnecessary overhead in opening and closing multiple database connections.
 		userAuth = auth.NewUserAuthService(dal, sessionHandler)

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/ramyadmz/goauth/internal/credentials"
 	"github.com/ramyadmz/goauth/internal/data"
-	"github.com/ramyadmz/goauth/internal/service/credentials"
 	"github.com/ramyadmz/goauth/pkg/pb"
 	"github.com/sirupsen/logrus"
 
@@ -23,14 +23,14 @@ const (
 type UserAuthService struct {
 	pb.UnimplementedOAuthServiceServer
 	dal            data.DataProvider
-	sessionHandler credentials.TokenHandler
+	sessionManager credentials.SessionManager
 }
 
 // NewUserAuthService creates a new instance of ClientAuthService with the provided dependencies.
-func NewUserAuthService(dal data.DataProvider, sessionHandler credentials.TokenHandler) *UserAuthService {
+func NewUserAuthService(dal data.DataProvider, sessionManager credentials.SessionManager) *UserAuthService {
 	return &UserAuthService{
 		dal:            dal,
-		sessionHandler: sessionHandler,
+		sessionManager: sessionManager,
 	}
 }
 
@@ -88,10 +88,7 @@ func (u *UserAuthService) LoginUser(ctx context.Context, req *pb.UserLoginReques
 	}
 
 	// Generate a new session id
-	sessionID, err := u.sessionHandler.Generate(ctx, credentials.Claims{
-		Subject:   userData.ID,
-		ExpiresAt: time.Now().Add(SessionExpTime),
-	})
+	session, err := u.sessionManager.Start(ctx, userData.ID)
 	if err != nil {
 		logger.Error("error generating authentication session: %w", err)
 		return nil, status.Errorf(codes.Internal, "Internal server error")
@@ -100,7 +97,7 @@ func (u *UserAuthService) LoginUser(ctx context.Context, req *pb.UserLoginReques
 	// Successful login
 	logger.Info("user logged in successfully")
 	return &pb.UserLoginResponse{
-		SessionId: sessionID,
+		SessionId: session.SessionID,
 	}, nil
 }
 
@@ -108,7 +105,7 @@ func (u *UserAuthService) LogoutUser(ctx context.Context, req *pb.UserLogoutRequ
 	logger := logrus.WithContext(ctx).WithField("session_id", req.SessionId)
 	logger.Info("logout request recieved")
 
-	if err := u.sessionHandler.Invalidate(ctx, req.SessionId); err != nil {
+	if err := u.sessionManager.End(ctx, req.SessionId); err != nil {
 		if err == credentials.ErrInvalidToken {
 			logger.Error("invalid or expired session: %w", err)
 			return nil, status.Errorf(codes.Unauthenticated, "invalid or expired session")
@@ -127,9 +124,9 @@ func (u *UserAuthService) ConsentUser(ctx context.Context, req *pb.UserConsentRe
 	logger.Info("consent request recieved")
 
 	// Validate the token
-	claims, err := u.sessionHandler.Validate(ctx, req.SessionId)
+	claims, err := u.sessionManager.Get(ctx, req.SessionId)
 	if err != nil {
-		if err == credentials.ErrInvalidToken {
+		if err == credentials.ErrInvalidSession {
 			logger.Error("invalid or expired session: %w", err)
 			return nil, status.Errorf(codes.Unauthenticated, "invalid or expired session")
 		}
@@ -148,7 +145,7 @@ func (u *UserAuthService) ConsentUser(ctx context.Context, req *pb.UserConsentRe
 	}
 
 	_, err = u.dal.CreateAuthorization(ctx, data.CreateAuthorizationParams{
-		UserID:   claims.Subject,
+		UserID:   claims.Subject.(int64),
 		ClientID: client.ID,
 		Scope:    "", // todo add scope
 	})

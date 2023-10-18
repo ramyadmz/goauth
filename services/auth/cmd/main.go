@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/ramyadmz/goauth/internal/service/auth"
+	"github.com/ramyadmz/goauth/internal/auth"
 	"github.com/ramyadmz/goauth/pkg/pb"
 	"google.golang.org/grpc"
 )

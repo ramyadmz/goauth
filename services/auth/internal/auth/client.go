@@ -7,8 +7,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/ramyadmz/goauth/internal/credentials"
 	"github.com/ramyadmz/goauth/internal/data"
-	"github.com/ramyadmz/goauth/internal/service/credentials"
 	"github.com/ramyadmz/goauth/pkg/pb"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
@@ -157,20 +157,14 @@ func (c *ClientAuthService) ExchangeToken(ctx context.Context, req *pb.ExchangeT
 		return nil, status.Errorf(codes.Unauthenticated, "Invalid authorization code.")
 	}
 
-	accessToken, err := c.tokenHandler.Generate(ctx, credentials.Claims{
-		Subject:   auth.UserID,
-		ExpiresAt: time.Now().Add(AccessTokenExp),
-	})
+	accessToken, err := c.tokenHandler.Generate(ctx, auth.UserID, credentials.AccessToken)
 
 	if err != nil {
 		logger.Error("error failed to generate access token: %w", err)
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
-	refreshToken, err := c.tokenHandler.Generate(ctx, credentials.Claims{
-		Subject:   auth.UserID,
-		ExpiresAt: time.Now().Add(RefreshTokenExp),
-	})
+	refreshToken, err := c.tokenHandler.Generate(ctx, auth.UserID, credentials.RefreshToken)
 
 	if err != nil {
 		logger.Error("error failed to generate refresh token: %w", err)
@@ -199,10 +193,7 @@ func (c *ClientAuthService) RefreshToken(ctx context.Context, req *pb.RefreshTok
 		}
 	}
 
-	accessToken, err := c.tokenHandler.Generate(ctx, credentials.Claims{
-		Subject:   claims.Subject,
-		ExpiresAt: time.Now().Add(AccessTokenExp),
-	})
+	accessToken, err := c.tokenHandler.Generate(ctx, claims.Subject, credentials.AccessToken)
 
 	if err != nil {
 		logger.Error("error failed to generate access token: %w", err)
@@ -219,7 +210,7 @@ func generateSecret(ctx context.Context) (string, error) {
 	secretBytes := make([]byte, 32)
 	_, err := rand.Read(secretBytes)
 	if err != nil {
-		return "", credentials.ErrGeneratingSecret
+		return "", credentials.ErrGenerateSecret
 	}
 	return base64.URLEncoding.EncodeToString(secretBytes), nil
 }

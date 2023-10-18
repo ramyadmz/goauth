@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/ramyadmz/goauth/internal/data"
-	"github.com/ramyadmz/goauth/internal/service/credentials"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -72,24 +71,5 @@ func (m *DataProvider) GetAuthorizationCodeByUserIDAndClientID(ctx context.Conte
 
 func (m *DataProvider) RevokeAuthorizationByUserID(ctx context.Context, userID int64) error {
 	args := m.Called(ctx, userID)
-	return args.Error(0)
-}
-
-type TokenHandler struct {
-	mock.Mock
-}
-
-func (m *TokenHandler) Generate(ctx context.Context, claims credentials.Claims) (string, error) {
-	args := m.Called(ctx, claims)
-	return args.String(0), args.Error(1)
-}
-
-func (m *TokenHandler) Validate(ctx context.Context, token string) (*credentials.Claims, error) {
-	args := m.Called(ctx, token)
-	return args.Get(0).(*credentials.Claims), args.Error(1)
-}
-
-func (m *TokenHandler) Invalidate(ctx context.Context, token string) error {
-	args := m.Called(ctx, token)
 	return args.Error(0)
 }

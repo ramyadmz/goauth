@@ -8,12 +8,13 @@ import (
 
 	"github.com/go-playground/assert/v2"
 	"github.com/google/uuid"
+	tokenMock "github.com/ramyadmz/goauth/internal/credentials/mock"
 	"github.com/ramyadmz/goauth/internal/data"
-	mock "github.com/ramyadmz/goauth/internal/data/mock"
+	dalMock "github.com/ramyadmz/goauth/internal/data/mock"
 
-	"github.com/ramyadmz/goauth/internal/service/credentials"
+	"github.com/ramyadmz/goauth/internal/credentials"
 	"github.com/ramyadmz/goauth/pkg/pb"
-	mocks "github.com/stretchr/testify/mock"
+	mock "github.com/stretchr/testify/mock"
 
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
@@ -31,10 +32,10 @@ func TestRegisterClient_HappyPath(t *testing.T) {
 		UpdatedAt:    time.Now(),
 	}
 
-	mockDAL := &mock.DataProvider{}
-	mockDAL.On("CreateClient", mocks.Anything, mocks.Anything).Return(client, nil)
+	mockDAL := &dalMock.DataProvider{}
+	mockDAL.On("CreateClient", mock.Anything, mock.Anything).Return(client, nil)
 
-	authService := NewClientAuthService(mockDAL, &mock.TokenHandler{})
+	authService := NewClientAuthService(mockDAL, &tokenMock.TokenHandler{})
 
 	rsp, err := authService.RegisterClient(context.Background(), &pb.RegisterClientRequest{Name: client.Name, Website: client.Website, Scope: client.Scope})
 
@@ -46,10 +47,10 @@ func TestRegisterClient_HappyPath(t *testing.T) {
 func TestRegisterClient_InternalError(t *testing.T) {
 	client := &data.Client{}
 
-	mockDAL := &mock.DataProvider{}
-	mockDAL.On("CreateClient", mocks.Anything, mocks.Anything).Return(client, errors.New("failed to create client"))
+	mockDAL := &dalMock.DataProvider{}
+	mockDAL.On("CreateClient", mock.Anything, mock.Anything).Return(client, errors.New("failed to create client"))
 
-	authService := NewClientAuthService(mockDAL, &mock.TokenHandler{})
+	authService := NewClientAuthService(mockDAL, &tokenMock.TokenHandler{})
 
 	rsp, err := authService.RegisterClient(context.Background(), &pb.RegisterClientRequest{Name: client.Name, Website: client.Website, Scope: client.Scope})
 	assert.NotEqual(t, err, nil)
@@ -86,12 +87,12 @@ func TestGetAuthorizationCode_HappyPath(t *testing.T) {
 		IsRevoked: false,
 	}
 
-	mockDAL := &mock.DataProvider{}
-	mockDAL.On("GetClientByID", mocks.Anything, mocks.Anything).Return(client, nil)
-	mockDAL.On("GetUserByUsername", mocks.Anything, mocks.Anything).Return(user, nil)
-	mockDAL.On("GetAuthorizationCodeByUserIDAndClientID", mocks.Anything, mocks.Anything, mocks.Anything).Return(authorization, nil)
+	mockDAL := &dalMock.DataProvider{}
+	mockDAL.On("GetClientByID", mock.Anything, mock.Anything).Return(client, nil)
+	mockDAL.On("GetUserByUsername", mock.Anything, mock.Anything).Return(user, nil)
+	mockDAL.On("GetAuthorizationCodeByUserIDAndClientID", mock.Anything, mock.Anything, mock.Anything).Return(authorization, nil)
 
-	authService := NewClientAuthService(mockDAL, &mock.TokenHandler{})
+	authService := NewClientAuthService(mockDAL, &tokenMock.TokenHandler{})
 	rsp, err := authService.GetAuthorizationCode(context.Background(), &pb.GetAuthorizationCodeRequest{
 		ClientId:     client.ID,
 		Username:     user.Username,
@@ -115,13 +116,13 @@ func TestGetAuthorizationCode_Unauthenticated(t *testing.T) {
 		UpdatedAt:    time.Now(),
 	}
 
-	mockDAL := &mock.DataProvider{}
-	mockDAL.On("GetClientByID", mocks.Anything, mocks.Anything).Return(client, nil)
+	mockDAL := &dalMock.DataProvider{}
+	mockDAL.On("GetClientByID", mock.Anything, mock.Anything).Return(client, nil)
 
-	authService := NewClientAuthService(mockDAL, &mock.TokenHandler{})
+	authService := NewClientAuthService(mockDAL, &tokenMock.TokenHandler{})
 	_, err := authService.GetAuthorizationCode(context.Background(), &pb.GetAuthorizationCodeRequest{
 		ClientId:     client.ID,
-		Username:     mocks.Anything,
+		Username:     mock.Anything,
 		ClientSecret: invalidclientSecret,
 	})
 	assert.Equal(t, status.Code(err), codes.Unauthenticated)
@@ -151,13 +152,13 @@ func TestExchangeToken_HappyPath(t *testing.T) {
 		IsRevoked: false,
 	}
 
-	mockDAL := &mock.DataProvider{}
-	mockDAL.On("GetClientByID", mocks.Anything, mocks.Anything).Return(client, nil)
-	mockDAL.On("GetAuthorizationCodeByAuthCode", mocks.Anything, mocks.Anything, mocks.Anything).Return(authorization, nil)
+	mockDAL := &dalMock.DataProvider{}
+	mockDAL.On("GetClientByID", mock.Anything, mock.Anything).Return(client, nil)
+	mockDAL.On("GetAuthorizationCodeByAuthCode", mock.Anything, mock.Anything, mock.Anything).Return(authorization, nil)
 
-	mockTokenHandler := &mock.TokenHandler{}
-	mockTokenHandler.On("Generate", mocks.Anything, mocks.Anything).Times(1).Return(accessToken, nil)
-	mockTokenHandler.On("Generate", mocks.Anything, mocks.Anything).Times(2).Return(refreshToken, nil)
+	mockTokenHandler := &tokenMock.TokenHandler{}
+	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Times(1).Return(accessToken, nil)
+	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Times(2).Return(refreshToken, nil)
 
 	authService := NewClientAuthService(mockDAL, mockTokenHandler)
 	rsp, err := authService.ExchangeToken(context.Background(), &pb.ExchangeTokenRequest{
@@ -196,13 +197,13 @@ func TestExchangeToken_Unauthenticated(t *testing.T) {
 		IsRevoked: false,
 	}
 
-	mockDAL := &mock.DataProvider{}
-	mockDAL.On("GetClientByID", mocks.Anything, mocks.Anything).Return(client, nil)
-	mockDAL.On("GetAuthorizationCodeByAuthCode", mocks.Anything, mocks.Anything, mocks.Anything).Return(authorization, nil)
+	mockDAL := &dalMock.DataProvider{}
+	mockDAL.On("GetClientByID", mock.Anything, mock.Anything).Return(client, nil)
+	mockDAL.On("GetAuthorizationCodeByAuthCode", mock.Anything, mock.Anything, mock.Anything).Return(authorization, nil)
 
-	mockTokenHandler := &mock.TokenHandler{}
-	mockTokenHandler.On("Generate", mocks.Anything, mocks.Anything).Times(1).Return(accessToken, nil)
-	mockTokenHandler.On("Generate", mocks.Anything, mocks.Anything).Times(2).Return(refreshToken, nil)
+	mockTokenHandler := &tokenMock.TokenHandler{}
+	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Times(1).Return(accessToken, nil)
+	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Times(2).Return(refreshToken, nil)
 
 	authService := NewClientAuthService(mockDAL, mockTokenHandler)
 	_, err := authService.ExchangeToken(context.Background(), &pb.ExchangeTokenRequest{
@@ -218,13 +219,13 @@ func TestExchangeToken_Unauthenticated(t *testing.T) {
 func TestRefreshToken_HappyPath(t *testing.T) {
 	accessToken := "accessToken"
 
-	mockTokenHandler := &mock.TokenHandler{}
-	mockTokenHandler.On("Validate", mocks.Anything, mocks.Anything).Return(&credentials.Claims{}, nil)
-	mockTokenHandler.On("Generate", mocks.Anything, mocks.Anything).Return(accessToken, nil)
+	mockTokenHandler := &tokenMock.TokenHandler{}
+	mockTokenHandler.On("Validate", mock.Anything, mock.Anything).Return(&credentials.Claims{}, nil)
+	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Return(accessToken, nil)
 
-	authService := NewClientAuthService(&mock.DataProvider{}, mockTokenHandler)
+	authService := NewClientAuthService(&dalMock.DataProvider{}, mockTokenHandler)
 	rsp, err := authService.RefreshToken(context.Background(), &pb.RefreshTokenRequest{
-		RefreshToken: mocks.Anything,
+		RefreshToken: mock.Anything,
 	})
 
 	assert.Equal(t, err, nil)
@@ -233,12 +234,12 @@ func TestRefreshToken_HappyPath(t *testing.T) {
 
 func TestRefreshToken_Unauthenticated(t *testing.T) {
 
-	mockTokenHandler := &mock.TokenHandler{}
-	mockTokenHandler.On("Validate", mocks.Anything, mocks.Anything).Return(&credentials.Claims{}, credentials.ErrInvalidToken)
+	mockTokenHandler := &tokenMock.TokenHandler{}
+	mockTokenHandler.On("Validate", mock.Anything, mock.Anything).Return(&credentials.Claims{}, credentials.ErrInvalidToken)
 
-	authService := NewClientAuthService(&mock.DataProvider{}, mockTokenHandler)
+	authService := NewClientAuthService(&dalMock.DataProvider{}, mockTokenHandler)
 	_, err := authService.RefreshToken(context.Background(), &pb.RefreshTokenRequest{
-		RefreshToken: mocks.Anything,
+		RefreshToken: mock.Anything,
 	})
 
 	assert.Equal(t, status.Code(err), codes.Unauthenticated)
