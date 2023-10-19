@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -23,9 +24,9 @@ import (
 
 func TestRegisterClient_HappyPath(t *testing.T) {
 	client := &data.Client{
-		ID:           101,
-		HashedSecret: []byte("veryHashedSecret"),
-		Name:         "name",
+		ID:           rand.Int63(),
+		HashedSecret: []byte(uuid.NewString()),
+		Name:         uuid.NewString(),
 		Website:      "test.com",
 		Scope:        "read",
 		CreatedAt:    time.Now(),
@@ -58,25 +59,28 @@ func TestRegisterClient_InternalError(t *testing.T) {
 }
 
 func TestGetAuthorizationCode_HappyPath(t *testing.T) {
-	clientSecret := "123abc"
+	clientSecret := uuid.NewString()
 	hashedSec, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 10)
+
 	client := &data.Client{
-		ID:           101,
+		ID:           rand.Int63(),
 		HashedSecret: hashedSec,
-		Name:         "name",
+		Name:         uuid.NewString(),
 		Website:      "test.com",
 		Scope:        "read",
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
+
 	user := &data.User{
-		ID:             102,
-		Username:       "user102",
-		HashedPassword: []byte("hashedpassword"),
+		ID:             rand.Int63(),
+		Username:       uuid.NewString(),
+		HashedPassword: []byte(uuid.NewString()),
 		Email:          "user102@test.com",
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
+
 	authorization := &data.Authorization{
 		UserID:    user.ID,
 		ClientID:  client.ID,
@@ -103,13 +107,13 @@ func TestGetAuthorizationCode_HappyPath(t *testing.T) {
 }
 
 func TestGetAuthorizationCode_Unauthenticated(t *testing.T) {
-	clientSecret := "123abc"
+	clientSecret := uuid.NewString()
 	hashedSec, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 10)
-	invalidclientSecret := "inavlidSec"
+	invalidclientSecret := uuid.NewString()
 	client := &data.Client{
-		ID:           101,
+		ID:           rand.Int63(),
 		HashedSecret: hashedSec,
-		Name:         "name",
+		Name:         uuid.NewString(),
 		Website:      "test.com",
 		Scope:        "read",
 		CreatedAt:    time.Now(),
@@ -129,21 +133,21 @@ func TestGetAuthorizationCode_Unauthenticated(t *testing.T) {
 }
 
 func TestExchangeToken_HappyPath(t *testing.T) {
-	clientSecret := "123abc"
-	accessToken := "accessToken"
-	refreshToken := "refreshToken"
+	clientSecret := uuid.NewString()
+	accessToken := uuid.NewString()
+	refreshToken := uuid.NewString()
 	hashedSec, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 10)
 	client := &data.Client{
-		ID:           101,
+		ID:           rand.Int63(),
 		HashedSecret: hashedSec,
-		Name:         "name",
+		Name:         uuid.NewString(),
 		Website:      "test.com",
 		Scope:        "read",
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
 	authorization := &data.Authorization{
-		UserID:    102,
+		UserID:    rand.Int63(),
 		ClientID:  client.ID,
 		AuthCode:  uuid.NewString(),
 		Scope:     "scope",
@@ -157,8 +161,8 @@ func TestExchangeToken_HappyPath(t *testing.T) {
 	mockDAL.On("GetAuthorizationCodeByAuthCode", mock.Anything, mock.Anything, mock.Anything).Return(authorization, nil)
 
 	mockTokenHandler := &tokenMock.TokenHandler{}
-	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Times(1).Return(accessToken, nil)
-	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Times(2).Return(refreshToken, nil)
+	mockTokenHandler.On("Generate", mock.Anything, mock.Anything, credentials.AccessToken).Times(1).Return(accessToken, nil)
+	mockTokenHandler.On("Generate", mock.Anything, mock.Anything, credentials.RefreshToken).Times(2).Return(refreshToken, nil)
 
 	authService := NewClientAuthService(mockDAL, mockTokenHandler)
 	rsp, err := authService.ExchangeToken(context.Background(), &pb.ExchangeTokenRequest{
@@ -173,13 +177,12 @@ func TestExchangeToken_HappyPath(t *testing.T) {
 }
 
 func TestExchangeToken_Unauthenticated(t *testing.T) {
-	invalidClientID := int64(100)
-	clientSecret := "123abc"
-	accessToken := "accessToken"
-	refreshToken := "refreshToken"
+	invalidClientID := rand.Int63()
+	clientSecret := uuid.NewString()
 	hashedSec, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 10)
+
 	client := &data.Client{
-		ID:           101,
+		ID:           rand.Int63(),
 		HashedSecret: hashedSec,
 		Name:         "name",
 		Website:      "test.com",
@@ -187,8 +190,9 @@ func TestExchangeToken_Unauthenticated(t *testing.T) {
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
+
 	authorization := &data.Authorization{
-		UserID:    102,
+		UserID:    rand.Int63(),
 		ClientID:  invalidClientID,
 		AuthCode:  uuid.NewString(),
 		Scope:     "scope",
@@ -201,11 +205,7 @@ func TestExchangeToken_Unauthenticated(t *testing.T) {
 	mockDAL.On("GetClientByID", mock.Anything, mock.Anything).Return(client, nil)
 	mockDAL.On("GetAuthorizationCodeByAuthCode", mock.Anything, mock.Anything, mock.Anything).Return(authorization, nil)
 
-	mockTokenHandler := &tokenMock.TokenHandler{}
-	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Times(1).Return(accessToken, nil)
-	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Times(2).Return(refreshToken, nil)
-
-	authService := NewClientAuthService(mockDAL, mockTokenHandler)
+	authService := NewClientAuthService(mockDAL, &tokenMock.TokenHandler{})
 	_, err := authService.ExchangeToken(context.Background(), &pb.ExchangeTokenRequest{
 		ClientId:          client.ID,
 		ClientSecret:      clientSecret,
@@ -217,11 +217,16 @@ func TestExchangeToken_Unauthenticated(t *testing.T) {
 }
 
 func TestRefreshToken_HappyPath(t *testing.T) {
-	accessToken := "accessToken"
+	accessToken := uuid.NewString()
 
 	mockTokenHandler := &tokenMock.TokenHandler{}
-	mockTokenHandler.On("Validate", mock.Anything, mock.Anything).Return(&credentials.Claims{}, nil)
-	mockTokenHandler.On("Generate", mock.Anything, mock.Anything).Return(accessToken, nil)
+
+	mockTokenHandler.On("Validate", mock.Anything, mock.Anything).Return(&credentials.Claims{
+		Subject:   rand.Int63(),
+		ExpiresAt: time.Now().Add(1 * time.Hour),
+	}, nil)
+
+	mockTokenHandler.On("Generate", mock.Anything, mock.Anything, credentials.AccessToken).Return(accessToken, nil)
 
 	authService := NewClientAuthService(&dalMock.DataProvider{}, mockTokenHandler)
 	rsp, err := authService.RefreshToken(context.Background(), &pb.RefreshTokenRequest{

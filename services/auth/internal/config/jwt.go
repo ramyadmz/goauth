@@ -68,13 +68,13 @@ func NewJWTConfig() (*JWTConfig, error) {
 	if err != nil || expTime <= 0 {
 		return nil, errors.New("OAUTH_JWT_EXPIRATION_TIME environment variable is not valid")
 	}
-	config.expirationTime = time.Duration(expTime) * time.Minute
+	config.expirationTime = time.Duration(expTime) * time.Second
 
 	refreshExpTime, err := strconv.Atoi(os.Getenv("OAUTH_JWT_REFRESH_EXPIRATION_TIME"))
 	if err != nil || refreshExpTime <= 0 {
 		return nil, errors.New("OAUTH_JWT_REFRESH_EXPIRATION_TIME environment variable is not valid")
 	}
-	config.refreshExpirationTime = time.Duration(refreshExpTime) * time.Minute
+	config.refreshExpirationTime = time.Duration(refreshExpTime) * time.Second
 
 	return config, nil
 }

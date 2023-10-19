@@ -106,7 +106,7 @@ func (u *UserAuthService) LogoutUser(ctx context.Context, req *pb.UserLogoutRequ
 	logger.Info("logout request recieved")
 
 	if err := u.sessionManager.End(ctx, req.SessionId); err != nil {
-		if err == credentials.ErrInvalidToken {
+		if err == credentials.ErrInvalidSession {
 			logger.Error("invalid or expired session: %w", err)
 			return nil, status.Errorf(codes.Unauthenticated, "invalid or expired session")
 		}

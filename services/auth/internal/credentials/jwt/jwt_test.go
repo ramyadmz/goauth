@@ -3,7 +3,7 @@ package jwt
 import (
 	"context"
 	"errors"
-	"fmt"
+	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -17,7 +17,7 @@ import (
 func TestGenerate_Success(t *testing.T) {
 	integration.SetUpLocalTestEnvs()
 	defer integration.UnSetLocalTestEnvs()
-	subject := int64(100)
+	subject := rand.Int63()
 
 	config, err := config.NewJWTConfig()
 	if err != nil {
@@ -50,33 +50,31 @@ func TestValidate_Success(t *testing.T) {
 	integration.SetUpLocalTestEnvs()
 	defer integration.UnSetLocalTestEnvs()
 
-	claims := credentials.Claims{
-		Subject:   int64(100),
-		ExpiresAt: time.Now().Add(1 * time.Minute),
-	}
+	subject := rand.Int63()
 
 	config, err := config.NewJWTConfig()
 	if err != nil {
 		t.Fatalf("invalid jwt config: %s", err)
 	}
+	expiresAt := time.Now().Add(config.GetExpirationTime())
 
 	jwtHandler := NewJWTHandler(config)
-	token, err := jwtHandler.Generate(context.Background(), claims, credentials.AccessToken)
+	token, err := jwtHandler.Generate(context.Background(), subject, credentials.AccessToken)
 	if err != nil {
 		t.Fatalf("generating token failed: %s", err)
 	}
 
 	res, err := jwtHandler.Validate(context.Background(), token)
 	assert.Equal(t, nil, err)
-	assert.Equal(t, claims.Subject, res.Subject)
-	assert.Equal(t, claims.ExpiresAt.Truncate(time.Second), res.ExpiresAt.Truncate(time.Second))
+	assert.Equal(t, subject, res.Subject)
+	assert.Equal(t, expiresAt.Truncate(time.Second), res.ExpiresAt.Truncate(time.Second))
 }
 
 func TestValidate_ExpiredToken(t *testing.T) {
 	integration.SetUpLocalTestEnvs()
 	defer integration.UnSetLocalTestEnvs()
-	os.Setenv("OAUTH_JWT_EXPIRATION_TIME", "2")
-	subject := int64(100)
+	os.Setenv("OAUTH_JWT_EXPIRATION_TIME", "1")
+	subject := rand.Int63()
 
 	config, err := config.NewJWTConfig()
 	if err != nil {
@@ -89,10 +87,9 @@ func TestValidate_ExpiredToken(t *testing.T) {
 		t.Fatalf("generating token failed: %s", err)
 	}
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	_, err = jwtHandler.Validate(context.Background(), expiredToken)
-	fmt.Println(err)
 
 	assert.Equal(t, true, errors.Is(err, credentials.ErrInvalidToken))
 }

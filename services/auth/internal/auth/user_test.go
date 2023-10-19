@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-playground/assert/v2"
+	"github.com/google/uuid"
 	"github.com/ramyadmz/goauth/internal/credentials"
 	sessionMock "github.com/ramyadmz/goauth/internal/credentials/mock"
 	"github.com/ramyadmz/goauth/internal/data"
@@ -62,15 +63,17 @@ func TestRegisterUser_InternalError(t *testing.T) {
 }
 
 func TestLoginUser_HappyPath(t *testing.T) {
-	sessionID := "sessionID"
-	password := "password"
+	sessionID := uuid.NewString()
+	password := uuid.NewString()
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
+	userID := rand.Int63()
+	expiresAt := time.Now().Add(1 * time.Hour)
 
 	user := &data.User{
-		ID:             100,
-		Username:       "user100",
+		ID:             userID,
+		Username:       uuid.NewString(),
 		HashedPassword: hashedPassword,
-		Email:          "user102@test.com",
+		Email:          "user@test.com",
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
@@ -78,10 +81,14 @@ func TestLoginUser_HappyPath(t *testing.T) {
 	mockDAL := &dalMock.DataProvider{}
 	mockDAL.On("GetUserByUsername", mock.Anything, mock.Anything).Return(user, nil)
 
-	mockSessionHandler := &sessionMock.SessionManager{}
-	mockSessionHandler.On("Generate", mock.Anything, mock.Anything).Return(sessionID, nil)
+	mockSessionManager := &sessionMock.SessionManager{}
+	mockSessionManager.On("Start", mock.Anything, mock.Anything).Return(credentials.Session{
+		SessionID: sessionID,
+		Subject:   userID,
+		ExpiresAt: expiresAt,
+	}, nil)
 
-	authService := NewUserAuthService(mockDAL, mockSessionHandler)
+	authService := NewUserAuthService(mockDAL, mockSessionManager)
 
 	rsp, err := authService.LoginUser(context.Background(), &pb.UserLoginRequest{
 		Username: user.Username,
@@ -93,13 +100,14 @@ func TestLoginUser_HappyPath(t *testing.T) {
 }
 
 func TestLoginUser_Unauthenticated(t *testing.T) {
-	fakePassword := "fakePassword"
-	password := "password"
+	userID := rand.Int63()
+	fakePassword := uuid.NewString()
+	password := uuid.NewString()
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
 
 	user := &data.User{
-		ID:             100,
-		Username:       "user100",
+		ID:             userID,
+		Username:       uuid.NewString(),
 		HashedPassword: hashedPassword,
 		Email:          "user102@test.com",
 		CreatedAt:      time.Now(),
@@ -120,10 +128,10 @@ func TestLoginUser_Unauthenticated(t *testing.T) {
 }
 
 func TestLogoutUser_HappyPath(t *testing.T) {
-	mockSessionHandler := &sessionMock.SessionManager{}
-	mockSessionHandler.On("Invalidate", mock.Anything, mock.Anything).Return(nil)
+	mockSessionManager := &sessionMock.SessionManager{}
+	mockSessionManager.On("End", mock.Anything, mock.Anything).Return(nil)
 
-	authService := NewUserAuthService(&dalMock.DataProvider{}, mockSessionHandler)
+	authService := NewUserAuthService(&dalMock.DataProvider{}, mockSessionManager)
 
 	_, err := authService.LogoutUser(context.Background(), &pb.UserLogoutRequest{
 		SessionId: mock.Anything,
@@ -133,10 +141,10 @@ func TestLogoutUser_HappyPath(t *testing.T) {
 }
 
 func TestLogoutUser_Unauthenticated(t *testing.T) {
-	mockSessionHandler := &sessionMock.SessionManager{}
-	mockSessionHandler.On("Invalidate", mock.Anything, mock.Anything).Return(credentials.ErrInvalidToken)
+	mockSessionManager := &sessionMock.SessionManager{}
+	mockSessionManager.On("End", mock.Anything, mock.Anything).Return(credentials.ErrInvalidSession)
 
-	authService := NewUserAuthService(&dalMock.DataProvider{}, mockSessionHandler)
+	authService := NewUserAuthService(&dalMock.DataProvider{}, mockSessionManager)
 
 	_, err := authService.LogoutUser(context.Background(), &pb.UserLogoutRequest{
 		SessionId: mock.Anything,
@@ -146,14 +154,17 @@ func TestLogoutUser_Unauthenticated(t *testing.T) {
 }
 
 func TestConsentUser_HappyPath(t *testing.T) {
-	sessionID := "sessionID"
-	clientSecret := "123abc"
+	clientID := rand.Int63()
+	clientSecret := uuid.NewString()
+	userID := rand.Int63()
+	sessionID := uuid.NewString()
+
 	hashedSec, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 10)
 	client := &data.Client{
-		ID:           101,
+		ID:           clientID,
 		HashedSecret: hashedSec,
-		Name:         "name",
-		Website:      "test.com",
+		Name:         uuid.NewString(),
+		Website:      uuid.NewString(),
 		Scope:        "read",
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
@@ -163,10 +174,13 @@ func TestConsentUser_HappyPath(t *testing.T) {
 	mockDAL.On("GetClientByID", mock.Anything, mock.Anything).Return(client, nil)
 	mockDAL.On("CreateAuthorization", mock.Anything, mock.Anything, mock.Anything).Return(&data.Authorization{}, nil)
 
-	mockTokenHandler := &sessionMock.SessionManager{}
-	mockTokenHandler.On("Validate", mock.Anything, mock.Anything).Return(&credentials.Claims{}, nil)
+	mockSessionManager := &sessionMock.SessionManager{}
+	mockSessionManager.On("Get", mock.Anything, mock.Anything).Return(&credentials.Session{
+		SessionID: sessionID,
+		Subject:   userID,
+	}, nil)
 
-	authService := NewUserAuthService(mockDAL, mockTokenHandler)
+	authService := NewUserAuthService(mockDAL, mockSessionManager)
 	_, err := authService.ConsentUser(context.Background(), &pb.UserConsentRequest{
 		ClientId:  client.ID,
 		SessionId: sessionID,
@@ -177,10 +191,10 @@ func TestConsentUser_HappyPath(t *testing.T) {
 
 func TestConsentUser_Unauthenticated(t *testing.T) {
 
-	mockTokenHandler := &sessionMock.SessionManager{}
-	mockTokenHandler.On("Validate", mock.Anything, mock.Anything).Return(&credentials.Claims{}, credentials.ErrInvalidToken)
+	mockSessionManager := &sessionMock.SessionManager{}
+	mockSessionManager.On("Get", mock.Anything, mock.Anything).Return(&credentials.Session{}, credentials.ErrInvalidSession)
 
-	authService := NewUserAuthService(&dalMock.DataProvider{}, mockTokenHandler)
+	authService := NewUserAuthService(&dalMock.DataProvider{}, mockSessionManager)
 	_, err := authService.ConsentUser(context.Background(), &pb.UserConsentRequest{
 		ClientId:  rand.Int63(),
 		SessionId: mock.Anything,
