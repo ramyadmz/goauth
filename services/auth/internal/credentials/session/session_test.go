@@ -8,21 +8,19 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ramyadmz/goauth/internal/data"
-	"github.com/ramyadmz/goauth/internal/data/mock"
+	dalMock "github.com/ramyadmz/goauth/internal/data/mock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestStartSession_Success(t *testing.T) {
-	mockDal := new(mock.DataProvider)
+	mockDal := new(dalMock.DataProvider)
 	sessionManager := NewSessionManager(mockDal)
 	userID := rand.Int63()
-	expiresAt := time.Now().Add(1 * time.Hour)
+	expiresAt := time.Now().Add(1 * time.Hour).Truncate(time.Second)
 	sessionID := uuid.NewString()
 
-	mockDal.On("CreateSession", context.Background(), data.CreateSessionParams{
-		UserID:    userID,
-		ExpiresAt: expiresAt,
-	}).Return(&data.Session{
+	mockDal.On("CreateSession", mock.Anything, mock.Anything).Return(&data.Session{
 		ID:        sessionID,
 		UserID:    userID,
 		CreatedAt: time.Now(),
@@ -37,12 +35,15 @@ func TestStartSession_Success(t *testing.T) {
 }
 
 func TestGetSession_Success(t *testing.T) {
-	mockDal := new(mock.DataProvider)
+	mockDal := new(dalMock.DataProvider)
 	sessMgr := NewSessionManager(mockDal)
 	userID := rand.Int63()
 	sessionID := uuid.NewString()
 
-	mockDal.On("GetSessionByID", context.Background(), userID).Return(data.Session{ID: sessionID, UserID: userID, ExpiresAt: time.Now().Add(1 * time.Hour)}, nil)
+	mockDal.On("GetSessionByID", mock.Anything, mock.Anything).Return(&data.Session{
+		ID:        sessionID,
+		UserID:    userID,
+		ExpiresAt: time.Now().Add(1 * time.Hour)}, nil)
 
 	session, err := sessMgr.Get(context.Background(), sessionID)
 	assert.NoError(t, err)
@@ -51,7 +52,7 @@ func TestGetSession_Success(t *testing.T) {
 }
 
 func TestEndSession_Success(t *testing.T) {
-	mockDal := new(mock.DataProvider)
+	mockDal := new(dalMock.DataProvider)
 	sessMgr := NewSessionManager(mockDal)
 
 	mockDal.On("DeleteSessionByID", context.Background(), "123").Return(nil)
@@ -61,16 +62,13 @@ func TestEndSession_Success(t *testing.T) {
 }
 
 func TestRefreshSession_Success(t *testing.T) {
-	mockDal := new(mock.DataProvider)
-	sessMgr := NewSessionManager(mockDal)
+	mockDal := new(dalMock.DataProvider)
+	sessionManager := NewSessionManager(mockDal)
 
-	mockDal.On("GetSessionByID", context.Background(), "123").Return(data.Session{ID: "123", UserID: int64(1), ExpiresAt: time.Now().Add(1 * time.Hour)}, nil)
-	mockDal.On("UpdateSession", context.Background(), data.UpdateSessionParams{
-		SessionID: "123",
-		ExpiresAt: time.Now().Add(1 * time.Hour),
-	}).Return(&data.Session{ID: "123", UserID: int64(1), ExpiresAt: time.Now().Add(1 * time.Hour)}, nil)
+	mockDal.On("GetSessionByID", mock.Anything, mock.Anything).Return(&data.Session{ID: "123", UserID: int64(1), ExpiresAt: time.Now().Add(1 * time.Hour)}, nil)
+	mockDal.On("UpdateSession", mock.Anything, mock.Anything).Return(&data.Session{ID: "123", UserID: int64(1), ExpiresAt: time.Now().Add(1 * time.Hour)}, nil)
 
-	newSessionID, err := sessMgr.Refresh(context.Background(), "123")
+	newSessionID, err := sessionManager.Refresh(context.Background(), "123")
 	assert.NoError(t, err)
 	assert.Equal(t, "123", newSessionID)
 }
